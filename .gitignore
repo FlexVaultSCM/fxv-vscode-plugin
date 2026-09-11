@@ -1,0 +1,11 @@
+node_modules/
+dist/
+out/
+*.vsix
+.vscode-test/
+*.tsbuildinfo
+.DS_Store
+*.log
+AGENTS.md
+PLAN.md
+RATIONALE.md
