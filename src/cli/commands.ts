@@ -73,6 +73,8 @@ export class FxvCommands {
    * by default.
    */
   snapshot(description?: string, run: RunOptions = {}): Promise<RunResult<undefined>> {
+    // The description rides on `-d`, which is a flag value rather than a
+    // positional, so a description starting with a dash is already safe.
     return this.runner.runJson<undefined>(
       { argv: ['snapshot', ...describedBy(description)], commandClass: 'write', envelope: false },
       run,
@@ -95,32 +97,37 @@ export class FxvCommands {
   }
 
   sync(revisionSpec?: string, run: RunOptions = {}): Promise<RunResult<WorkspaceSyncPayload>> {
-    const argv = revisionSpec ? ['sync', revisionSpec] : ['sync'];
     return this.runner.runJson<WorkspaceSyncPayload>(
-      { argv, commandClass: 'write', envelope: true },
+      {
+        argv: ['sync'],
+        ...(revisionSpec ? { positionals: [revisionSpec] } : {}),
+        commandClass: 'write',
+        envelope: true,
+      },
       run,
     );
   }
 
   goto(revisionSpec: string, run: RunOptions = {}): Promise<RunResult<WorkspaceSyncPayload>> {
     return this.runner.runJson<WorkspaceSyncPayload>(
-      { argv: ['goto', revisionSpec], commandClass: 'write', envelope: true },
+      { argv: ['goto'], positionals: [revisionSpec], commandClass: 'write', envelope: true },
       run,
     );
   }
 
   revert(target: RevertTarget, run: RunOptions = {}): Promise<RunResult<WorkspaceSyncPayload>> {
     const argv = ['revert'];
+    let positionals: string[] = [];
     if ('all' in target) {
       argv.push('--all');
       if (target.force) {
         argv.push('--force');
       }
     } else {
-      argv.push(...requirePaths(target.paths, 'revert'));
+      positionals = requirePaths(target.paths, 'revert');
     }
     return this.runner.runJson<WorkspaceSyncPayload>(
-      { argv, commandClass: 'write', envelope: true },
+      { argv, positionals, commandClass: 'write', envelope: true },
       run,
     );
   }
@@ -131,13 +138,14 @@ export class FxvCommands {
     run: RunOptions = {},
   ): Promise<RunResult<WorkspaceSyncPayload>> {
     const argv = ['resolve', `--${strategy}`];
+    let positionals: string[] = [];
     if ('all' in target) {
       argv.push('--all');
     } else {
-      argv.push(...requirePaths(target.paths, 'resolve'));
+      positionals = requirePaths(target.paths, 'resolve');
     }
     return this.runner.runJson<WorkspaceSyncPayload>(
-      { argv, commandClass: 'write', envelope: true },
+      { argv, positionals, commandClass: 'write', envelope: true },
       run,
     );
   }
@@ -156,15 +164,18 @@ export class FxvCommands {
   /** Defaults to changed files only, which is what the history view renders. */
   changeinfo(revisionSpec: string, run: RunOptions = {}): Promise<RunResult<ChangeInfoPayload>> {
     return this.runner.runJson<ChangeInfoPayload>(
-      { argv: ['changeinfo', revisionSpec], commandClass: 'read', envelope: true },
+      { argv: ['changeinfo'], positionals: [revisionSpec], commandClass: 'read', envelope: true },
       run,
     );
   }
 
   /** The only command that answers with bytes rather than an envelope. */
   cat(path: string, revisionSpec?: string, run: RunOptions = {}): Promise<RawResult> {
-    const argv = revisionSpec ? ['cat', '-r', revisionSpec, path] : ['cat', path];
-    return this.runner.runRaw({ argv, commandClass: 'read', envelope: false }, run);
+    const argv = revisionSpec ? ['cat', '-r', revisionSpec] : ['cat'];
+    return this.runner.runRaw(
+      { argv, positionals: [path], commandClass: 'read', envelope: false },
+      run,
+    );
   }
 
   resume(
@@ -195,7 +206,7 @@ export class FxvCommands {
 
   login(username: string, run: RunOptions = {}): Promise<RunResult<LoginPayload>> {
     return this.runner.runJson<LoginPayload>(
-      { argv: ['login', username], commandClass: 'write', envelope: true },
+      { argv: ['login'], positionals: [username], commandClass: 'write', envelope: true },
       run,
     );
   }

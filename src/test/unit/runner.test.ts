@@ -104,6 +104,30 @@ describe('applyGlobalFlags', () => {
       '--unattended',
     ]);
   });
+
+  it('keeps the flags ahead of the separator, where the CLI still reads them', () => {
+    expect(applyGlobalFlags(['revert'], true, ['a.txt', '-weird.txt'])).toEqual([
+      'revert',
+      '--format',
+      'json',
+      '--unattended',
+      '--no-color',
+      '--',
+      'a.txt',
+      '-weird.txt',
+    ]);
+  });
+
+  it('omits the separator when there is nothing positional to protect', () => {
+    expect(applyGlobalFlags(['revert', '--all'], true)).toEqual([
+      'revert',
+      '--all',
+      '--format',
+      'json',
+      '--unattended',
+      '--no-color',
+    ]);
+  });
 });
 
 describe('runJson', () => {
@@ -123,7 +147,8 @@ describe('runJson', () => {
     );
     const runner = runnerFor(file);
     const result = await runner.runRaw({
-      argv: ['cat', 'a.txt'],
+      argv: ['cat'],
+      positionals: ['a.txt'],
       commandClass: 'read',
       envelope: false,
     });
@@ -133,9 +158,10 @@ describe('runJson', () => {
     }
     expect(JSON.parse(result.data.toString('utf8'))).toEqual([
       'cat',
-      'a.txt',
       '--unattended',
       '--no-color',
+      '--',
+      'a.txt',
     ]);
   });
 
@@ -357,6 +383,45 @@ describe('timeouts', () => {
 });
 
 describe('the mutation queue', () => {
+  it('holds the gate until an abandoned write actually exits', async () => {
+    const marker = path.join(workDir, 'gate-marker.txt');
+    const slow = script(
+      `setTimeout(() => { require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran'); }, 2000);
+`,
+    );
+    const runner = runnerFor(slow, { writeTimeoutSeconds: () => 1 });
+
+    const abandoned = await runner.runJson({
+      argv: ['sync'],
+      commandClass: 'write',
+      envelope: true,
+    });
+    expect(abandoned).toMatchObject({ ok: false, failure: 'timeout' });
+
+    // The next write must wait for the process still holding the workspace
+    // lock, rather than spawning into a workspace mid-operation.
+    const startedAt = Date.now();
+    await runner.runJson({ argv: ['snapshot'], commandClass: 'write', envelope: false });
+    expect(Date.now() - startedAt).toBeGreaterThan(500);
+    expect(fs.existsSync(marker)).toBe(true);
+  }, 20_000);
+
+  it('leaves busy alone for a status, which locks but does not mutate', async () => {
+    const busy: boolean[] = [];
+    const runner = runnerFor(printing(envelope('status', { current_branch: 'main' })), {
+      onBusyChanged: (value) => busy.push(value),
+    });
+
+    const running = runner.runJson({
+      argv: ['status'],
+      commandClass: 'locking-read',
+      envelope: true,
+    });
+    expect(runner.busy).toBe(false);
+    await running;
+    expect(busy).toEqual([]);
+  });
+
   it('reports busy only while a mutation is in flight', async () => {
     const busy: boolean[] = [];
     const runner = runnerFor(printing(envelope('sync', { files_updated_count: 0 })), {

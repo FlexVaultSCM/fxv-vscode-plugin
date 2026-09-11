@@ -50,8 +50,10 @@ export function parseMessageVersion(text: string): { major: number; minor: numbe
 }
 
 /**
- * Ignores prerelease ordering. A prerelease of the floor sorts below it here,
- * which is the answer that keeps an untested build out.
+ * Compares the release triple and ignores any prerelease or build suffix, so
+ * `0.9.0-rc1` is treated as `0.9.0` and accepted, while `0.10.0-rc1` is treated
+ * as `0.10.0` and blocked. A prerelease of a supported version is close enough
+ * to run; a prerelease of the next breaking one is not.
  */
 function compare(left: SemVer, right: SemVer): number {
   return left.major - right.major || left.minor - right.minor || left.patch - right.patch;

@@ -8,6 +8,7 @@ import {
   parseEnvelope,
   type Envelope,
   type ErrorData,
+  type ErrorPayload,
   type ExitClass,
 } from './envelope';
 import { MutationGate, type GateMode } from './gate';
@@ -33,8 +34,13 @@ import { VersionGuard } from './versionGuard';
 export type CommandClass = 'read' | 'locking-read' | 'write';
 
 export interface CommandSpec {
-  /** The subcommand and its arguments. Global flags are added here. */
+  /** The subcommand and any flags of its own. Global flags are added here. */
   readonly argv: readonly string[];
+  /**
+   * Values that are never flags: paths, revision specs, usernames. They go
+   * after a `--` separator, so a file named `-weird.txt` stays a file name.
+   */
+  readonly positionals?: readonly string[];
   readonly commandClass: CommandClass;
   /**
    * False for `snapshot`, `publish`, and `cat`, which have no JSON success
@@ -128,15 +134,20 @@ export class CliRunner {
   private readonly gate = new MutationGate();
   private readonly spawn: Spawn;
   private readonly guard: VersionGuard;
+  private mutationsInFlight = 0;
 
   constructor(private readonly deps: RunnerDependencies) {
     this.spawn = deps.spawn ?? nodeSpawn;
     this.guard = deps.versionGuard ?? new VersionGuard();
   }
 
-  /** True while a mutating command is in flight. */
+  /**
+   * True while a mutating command is in flight. A `locking-read` holds the same
+   * gate but is not a mutation, and the input box has no business being
+   * disabled by a status refresh.
+   */
   get busy(): boolean {
-    return this.gate.busy;
+    return this.mutationsInFlight > 0;
   }
 
   /** Runs a command that answers with an envelope. */
@@ -222,23 +233,47 @@ export class CliRunner {
 
   private async run(spec: CommandSpec, options: RunOptions): Promise<Execution> {
     const mode = gateMode(spec.commandClass);
+    const mutation = isMutation(spec.commandClass);
     await this.gate.acquire(mode);
-    if (isMutation(spec.commandClass)) {
+    if (mutation) {
+      this.mutationsInFlight += 1;
       this.deps.onBusyChanged?.(true);
     }
-    try {
-      return await this.execute(spec, options);
-    } finally {
-      this.gate.release(mode);
-      if (isMutation(spec.commandClass)) {
-        this.deps.onBusyChanged?.(false);
+
+    let released = false;
+    const release = (): void => {
+      if (released) {
+        return;
       }
+      released = true;
+      this.gate.release(mode);
+      if (mutation) {
+        this.mutationsInFlight -= 1;
+        this.deps.onBusyChanged?.(this.busy);
+      }
+    };
+
+    try {
+      const { execution, detached } = await this.execute(spec, options);
+      if (detached) {
+        // A write that outran its timeout was deliberately left running, and it
+        // still holds the workspace lock. Releasing the gate now would let the
+        // next command spawn into a workspace mid-operation, so the gate is
+        // held until the abandoned process actually exits.
+        void detached.finally(release);
+      } else {
+        release();
+      }
+      return execution;
+    } catch (error) {
+      release();
+      throw error;
     }
   }
 
-  private execute(spec: CommandSpec, options: RunOptions): Promise<Execution> {
+  private execute(spec: CommandSpec, options: RunOptions): Promise<ExecuteResult> {
     const binary = this.deps.binary();
-    const argv = applyGlobalFlags(spec.argv, spec.envelope);
+    const argv = applyGlobalFlags(spec.argv, spec.envelope, spec.positionals ?? []);
     const cwd = this.deps.cwd();
     const timeoutSeconds = isMutation(spec.commandClass)
       ? this.deps.writeTimeoutSeconds()
@@ -246,13 +281,15 @@ export class CliRunner {
 
     this.deps.log?.debug(`Running ${binary} ${argv.join(' ')}${cwd ? ` in ${cwd}` : ''}.`);
 
-    return new Promise<Execution>((resolve) => {
+    return new Promise<ExecuteResult>((resolve) => {
       const stdout: Buffer[] = [];
       const stderr: Buffer[] = [];
       let settled = false;
       let timer: NodeJS.Timeout | undefined;
-      let killTimer: NodeJS.Timeout | undefined;
       let cancelled = false;
+      // Declared before `finish`, which disposes it: a spawn that reports
+      // synchronously would otherwise reach it before the assignment.
+      let subscription: { dispose(): void } | undefined = undefined;
 
       const child = this.spawn(binary, argv, {
         cwd: cwd ?? undefined,
@@ -263,7 +300,7 @@ export class CliRunner {
         shell: false,
       });
 
-      const finish = (execution: Execution): void => {
+      const finish = (execution: Execution, detached?: Promise<void>): void => {
         if (settled) {
           return;
         }
@@ -271,11 +308,8 @@ export class CliRunner {
         if (timer) {
           clearTimeout(timer);
         }
-        if (killTimer) {
-          clearTimeout(killTimer);
-        }
         subscription?.dispose();
-        resolve(execution);
+        resolve(detached ? { execution, detached } : { execution });
       };
 
       child.stdout?.on('data', (chunk: Buffer) => stdout.push(chunk));
@@ -293,6 +327,11 @@ export class CliRunner {
       });
 
       child.on('close', (code, signal) => {
+        if (settled) {
+          // The run was already reported: a write that outran its timeout, or a
+          // read that was killed. Nothing left to say.
+          return;
+        }
         const exitCode = code ?? null;
         const exitClass = classifyExitCode(exitCode);
         const stderrText = Buffer.concat(stderr).toString('utf8').trim();
@@ -324,7 +363,7 @@ export class CliRunner {
         });
       });
 
-      const subscription = options.cancellation?.onCancellationRequested(() => {
+      subscription = options.cancellation?.onCancellationRequested(() => {
         if (isMutation(spec.commandClass)) {
           // Killing a writer mid-flight is what manufactures the interrupted
           // state `fxv resume` exists to repair, so cancellation is declined.
@@ -343,7 +382,7 @@ export class CliRunner {
             this.deps.log?.error(
               `fxv ${argv[0] ?? ''} exceeded flexvault.readTimeoutSeconds (${timeoutSeconds}s) and was stopped.`,
             );
-            killTimer = this.terminate(child);
+            this.terminate(child);
             finish({
               ok: false,
               failure: 'timeout',
@@ -362,15 +401,22 @@ export class CliRunner {
           );
           child.unref();
           this.deps.onPossiblyInterrupted?.(`fxv ${argv[0] ?? ''} outran its write timeout`);
-          finish({
-            ok: false,
-            failure: 'timeout',
-            message: `The fxv CLI has been running for more than ${timeoutSeconds} seconds. It was left running, because stopping it partway would leave the workspace inconsistent.`,
-            exitCode: null,
-            exitClass: 'general',
-            possiblyInterrupted: true,
-            raw: '',
+          const detached = new Promise<void>((exited) => {
+            child.once('close', () => exited());
+            child.once('error', () => exited());
           });
+          finish(
+            {
+              ok: false,
+              failure: 'timeout',
+              message: `The fxv CLI has been running for more than ${timeoutSeconds} seconds. It was left running, because stopping it partway would leave the workspace inconsistent.`,
+              exitCode: null,
+              exitClass: 'general',
+              possiblyInterrupted: true,
+              raw: '',
+            },
+            detached,
+          );
         }, timeoutSeconds * 1000);
       }
 
@@ -381,13 +427,17 @@ export class CliRunner {
     });
   }
 
-  private terminate(child: ChildProcess): NodeJS.Timeout {
+  private terminate(child: ChildProcess): void {
     child.kill();
-    return setTimeout(() => {
+    // The escalation has to outlive the run's own bookkeeping: whether the
+    // child ignored the first signal is only knowable after the grace period,
+    // by which time the result has long been reported.
+    const escalation = setTimeout(() => {
       if (child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
       }
     }, SIGKILL_GRACE_MS);
+    escalation.unref?.();
   }
 
   private checkVersions(envelope: Envelope<unknown>, raw: string): RunFailure | undefined {
@@ -434,7 +484,7 @@ export class CliRunner {
     // whose process exit code has not been observed yet.
     const effectiveCode = payload.exit_code;
     const exitClass = classifyExitCode(effectiveCode);
-    const data = readErrorData(payload);
+    const data = this.guardedErrorData(payload);
     const lockHolder = exitClass === 'locked' ? parseLockHolder(payload.message) : undefined;
 
     if (lockHolder) {
@@ -454,6 +504,25 @@ export class CliRunner {
       ...(exitClass === 'interrupted' || exitClass === 'died' ? { possiblyInterrupted: true } : {}),
       raw,
     };
+  }
+
+  /**
+   * The detail sub-envelope, dropped when its own version is one this extension
+   * cannot read. The error itself still stands: losing the structured detail
+   * costs a richer banner, while reading it against the wrong contract would
+   * report numbers that mean something else.
+   */
+  private guardedErrorData(payload: ErrorPayload): ErrorData | undefined {
+    const data = readErrorData(payload);
+    if (!data) {
+      return undefined;
+    }
+    const verdict = this.guard.checkMessage(data.kind, data.version);
+    if (!verdict.ok) {
+      this.deps.log?.error(`Ignoring the ${data.kind} detail on this error: ${verdict.message}`);
+      return undefined;
+    }
+    return data;
   }
 
   private parseFailure(
@@ -490,9 +559,18 @@ export class CliRunner {
  * deliberately absent: they are unwired at 0.9.0 and print a warning to stderr
  * on every call. `--unattended` also suppresses the update check and the
  * detached refresh process it would otherwise spawn.
+ *
+ * Flags go between the subcommand and the `--` separator. Everything after that
+ * separator is a positional value, global flags included, so appending them
+ * last would hand the CLI `--unattended` as a file to revert.
  */
-export function applyGlobalFlags(argv: readonly string[], envelope: boolean): string[] {
-  const applied = [...argv];
+export function applyGlobalFlags(
+  argv: readonly string[],
+  envelope: boolean,
+  positionals: readonly string[] = [],
+): string[] {
+  const [subcommand, ...flags] = argv;
+  const applied = [...flags];
   if (envelope && !applied.includes('--format')) {
     applied.push('--format', 'json');
   }
@@ -502,7 +580,11 @@ export function applyGlobalFlags(argv: readonly string[], envelope: boolean): st
   if (!applied.includes('--no-color')) {
     applied.push('--no-color');
   }
-  return applied;
+  return [
+    ...(subcommand === undefined ? [] : [subcommand]),
+    ...applied,
+    ...(positionals.length > 0 ? ['--', ...positionals] : []),
+  ];
 }
 
 /**
@@ -526,6 +608,15 @@ export function messageFromStderr(stderr: string): string | undefined {
     return undefined;
   }
   return first.replace(/^Error:\s*/i, '');
+}
+
+interface ExecuteResult {
+  readonly execution: Execution;
+  /**
+   * Set when the process was left running: resolves once it finally exits. The
+   * gate is held until then.
+   */
+  readonly detached?: Promise<void>;
 }
 
 type Execution =

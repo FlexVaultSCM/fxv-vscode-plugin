@@ -47,6 +47,14 @@ describe('the program version gate', () => {
     expect(guard('win32').checkProgram('1.0.0')).toMatchObject({ upgradeCommandAvailable: false });
   });
 
+  it('reads a prerelease as its release version, at both ends of the range', () => {
+    expect(guard().checkProgram('0.9.0-rc1').ok).toBe(true);
+    expect(guard().checkProgram('0.10.0-rc1')).toMatchObject({
+      ok: false,
+      problem: 'above-ceiling',
+    });
+  });
+
   it('blocks a version it cannot compare', () => {
     expect(guard().checkProgram('dev')).toMatchObject({ ok: false, problem: 'unparsable' });
   });

@@ -22,6 +22,11 @@ export interface RevisionSpec {
 }
 
 export function specFromCommitInfo(commit: CommitInfo): string {
+  if (commit.type === 'draft' && commit.draft_revision === undefined) {
+    // Falling through would build `main.11`, which is a different commit: the
+    // published revision this draft sits on rather than the draft itself.
+    throw new Error(`A draft commit on branch "${commit.branch}" has no draft revision.`);
+  }
   return specFromRevision(commit.branch, commit.revision, commit.draft_revision);
 }
 
@@ -45,6 +50,10 @@ export function specFromRevision(
   return `${branch}.${revision}`;
 }
 
+// The branch group is greedy, which is only unambiguous because a branch name
+// cannot contain a dot: fxv-core restricts it to `[a-zA-Z0-9_- ]{1,64}`. If that
+// ever widens, `release.2.5` becomes two readings and this needs the branch
+// passed in rather than inferred.
 const DRAFT_SPEC = /^(.+)\.(\d+|-)\.(\d+)$/;
 const PUBLISHED_SPEC = /^(.+)\.(\d+)$/;
 

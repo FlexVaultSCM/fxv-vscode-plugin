@@ -31,7 +31,9 @@ describe('FxvCommands', () => {
       argv: ['status'],
       commandClass: 'locking-read',
     });
-    expect(await argvOf((fxv) => fxv.status({ skipRemoteUpdate: true, skipScan: true }))).toEqual({
+    expect(
+      await argvOf((fxv) => fxv.status({ skipRemoteUpdate: true, skipScan: true })),
+    ).toMatchObject({
       argv: ['status', '--skip-remote-update', '--skip-scan'],
       commandClass: 'read',
       envelope: true,
@@ -68,8 +70,14 @@ describe('FxvCommands', () => {
 
   it('builds the workspace-sync family', async () => {
     expect((await argvOf((fxv) => fxv.sync())).argv).toEqual(['sync']);
-    expect((await argvOf((fxv) => fxv.sync('main.11'))).argv).toEqual(['sync', 'main.11']);
-    expect((await argvOf((fxv) => fxv.goto('main.-.1'))).argv).toEqual(['goto', 'main.-.1']);
+    expect(await argvOf((fxv) => fxv.sync('main.11'))).toMatchObject({
+      argv: ['sync'],
+      positionals: ['main.11'],
+    });
+    expect(await argvOf((fxv) => fxv.goto('main.-.1'))).toMatchObject({
+      argv: ['goto'],
+      positionals: ['main.-.1'],
+    });
     expect((await argvOf((fxv) => fxv.resume({ mode: 'rollback', full: true }))).argv).toEqual([
       'resume',
       '--rollback',
@@ -78,21 +86,20 @@ describe('FxvCommands', () => {
   });
 
   it('takes paths or --all for revert and resolve, never both', async () => {
-    expect((await argvOf((fxv) => fxv.revert({ paths: ['a.txt', 'b/c.png'] }))).argv).toEqual([
-      'revert',
-      'a.txt',
-      'b/c.png',
-    ]);
+    // Paths are positional, so a file named `-weird.txt` is still a file name.
+    expect(await argvOf((fxv) => fxv.revert({ paths: ['a.txt', '-weird.png'] }))).toMatchObject({
+      argv: ['revert'],
+      positionals: ['a.txt', '-weird.png'],
+    });
     expect((await argvOf((fxv) => fxv.revert({ all: true, force: true }))).argv).toEqual([
       'revert',
       '--all',
       '--force',
     ]);
-    expect((await argvOf((fxv) => fxv.resolve('theirs', { paths: ['a.txt'] }))).argv).toEqual([
-      'resolve',
-      '--theirs',
-      'a.txt',
-    ]);
+    expect(await argvOf((fxv) => fxv.resolve('theirs', { paths: ['a.txt'] }))).toMatchObject({
+      argv: ['resolve', '--theirs'],
+      positionals: ['a.txt'],
+    });
     expect((await argvOf((fxv) => fxv.resolve('undo', { all: true }))).argv).toEqual([
       'resolve',
       '--undo',
@@ -114,10 +121,10 @@ describe('FxvCommands', () => {
       '-b',
       'art',
     ]);
-    expect((await argvOf((fxv) => fxv.changeinfo('main.11'))).argv).toEqual([
-      'changeinfo',
-      'main.11',
-    ]);
+    expect(await argvOf((fxv) => fxv.changeinfo('main.11'))).toMatchObject({
+      argv: ['changeinfo'],
+      positionals: ['main.11'],
+    });
     expect(await argvOf((fxv) => fxv.doctor())).toMatchObject({ commandClass: 'read' });
     expect(await argvOf((fxv) => fxv.doctor(true))).toMatchObject({
       argv: ['doctor', '--fix'],
@@ -127,21 +134,21 @@ describe('FxvCommands', () => {
 
   it('sends cat down the raw path, with and without a revision', async () => {
     expect(await argvOf((fxv) => fxv.cat('art/hero.png'))).toEqual({
-      argv: ['cat', 'art/hero.png'],
+      argv: ['cat'],
+      positionals: ['art/hero.png'],
       commandClass: 'read',
       envelope: false,
     });
-    expect((await argvOf((fxv) => fxv.cat('art/hero.png', 'main.-.1'))).argv).toEqual([
-      'cat',
-      '-r',
-      'main.-.1',
-      'art/hero.png',
-    ]);
+    expect(await argvOf((fxv) => fxv.cat('art/hero.png', 'main.-.1'))).toMatchObject({
+      argv: ['cat', '-r', 'main.-.1'],
+      positionals: ['art/hero.png'],
+    });
   });
 
   it('treats the auth commands as mutations', async () => {
     expect(await argvOf((fxv) => fxv.login('dev'))).toMatchObject({
-      argv: ['login', 'dev'],
+      argv: ['login'],
+      positionals: ['dev'],
       commandClass: 'write',
     });
     expect(await argvOf((fxv) => fxv.logout())).toMatchObject({
