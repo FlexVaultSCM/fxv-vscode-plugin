@@ -53,8 +53,13 @@ describe('standardLocations', () => {
     expect(standardLocations('linux', {})).toEqual(['/usr/local/bin/fxv', '/opt/homebrew/bin/fxv']);
   });
 
-  it('covers Homebrew and cargo on macOS and Linux', () => {
-    const expected = ['/usr/local/bin/fxv', '/opt/homebrew/bin/fxv', '/home/dev/.cargo/bin/fxv'];
+  it('covers the install script target, Homebrew, and cargo on macOS and Linux', () => {
+    const expected = [
+      '/home/dev/.local/bin/fxv',
+      '/usr/local/bin/fxv',
+      '/opt/homebrew/bin/fxv',
+      '/home/dev/.cargo/bin/fxv',
+    ];
     expect(standardLocations('darwin', POSIX_ENV)).toEqual(expected);
     expect(standardLocations('linux', POSIX_ENV)).toEqual(expected);
   });
@@ -119,6 +124,22 @@ describe('resolveCliPath', () => {
     );
     expect(location).toEqual({
       path: 'C:\\Program Files\\FlexVault\\bin\\fxv.exe',
+      source: 'standard',
+      configuredPathMissing: true,
+    });
+  });
+
+  it('rejects a relative setting rather than resolving it against the host cwd', () => {
+    const location = resolveCliPath(
+      environment({
+        platform: 'linux',
+        env: POSIX_ENV,
+        configuredPath: './fxv',
+        isExecutableFile: only('./fxv', '/usr/local/bin/fxv'),
+      }),
+    );
+    expect(location).toEqual({
+      path: '/usr/local/bin/fxv',
       source: 'standard',
       configuredPathMissing: true,
     });

@@ -31,12 +31,17 @@ export class CliDiscovery {
 
     if (location.configuredPathMissing) {
       this.log?.error(
-        'flexvault.cliPath is not an executable file, so the standard locations were searched instead.',
+        'flexvault.cliPath was ignored because it is not an absolute path to an executable file. The standard locations were searched instead.',
       );
     }
     this.log?.debug(`Resolved the fxv binary to ${location.path} (${location.source}).`);
 
-    this.cached = location;
+    // A fallback verdict means nothing was found, and that is the one case
+    // that changes without the setting changing: the user installs fxv while
+    // the window stays open. Caching it would hold the failure for the session.
+    if (location.source !== 'fallback') {
+      this.cached = location;
+    }
     return location;
   }
 

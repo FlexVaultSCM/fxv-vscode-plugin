@@ -14,7 +14,8 @@ export interface CliLocation {
   readonly path: string;
   readonly source: CliPathSource;
   /**
-   * `flexvault.cliPath` was set but did not point at an executable file. The
+   * `flexvault.cliPath` was set but was not an absolute path to an executable
+   * file. The
    * setting is ignored in that case, and this flag is what lets the caller say
    * so rather than silently running some other binary.
    */
@@ -63,7 +64,12 @@ export function standardLocations(
     return locations;
   }
 
-  const locations = ['/usr/local/bin/fxv', '/opt/homebrew/bin/fxv'];
+  const locations: string[] = [];
+  if (env.HOME) {
+    // What `install.sh` targets, so it comes first.
+    locations.push(join(env.HOME, '.local', 'bin', 'fxv'));
+  }
+  locations.push('/usr/local/bin/fxv', '/opt/homebrew/bin/fxv');
   if (env.HOME) {
     locations.push(join(env.HOME, '.cargo', 'bin', 'fxv'));
   }
@@ -114,8 +120,13 @@ function windowsExecutableNames(env: Readonly<Record<string, string | undefined>
 export function resolveCliPath(environment: DiscoveryEnvironment): CliLocation {
   const { platform, env, isExecutableFile } = environment;
   const configuredPath = environment.configuredPath?.trim() ?? '';
+  // A relative setting would be resolved against the extension host's working
+  // directory, which has nothing to do with the workspace, so it is rejected
+  // rather than silently pointed at whatever sits there.
+  const configuredPathUsable =
+    configuredPath.length > 0 && pathApi(platform).isAbsolute(configuredPath);
 
-  if (configuredPath.length > 0 && isExecutableFile(configuredPath)) {
+  if (configuredPathUsable && isExecutableFile(configuredPath)) {
     return { path: configuredPath, source: 'setting', configuredPathMissing: false };
   }
   const configuredPathMissing = configuredPath.length > 0;
