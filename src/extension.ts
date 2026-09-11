@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 
+import { FxvCommands } from './cli/commands';
 import { CliDiscovery } from './cli/discovery';
+import { CliRunner } from './cli/runner';
+import { VersionGuard } from './cli/versionGuard';
+import { WorkspaceRoots } from './cli/workspace';
 import { LINKS, type LinkName } from './links';
 import { Log } from './ui/log';
 
@@ -18,18 +22,47 @@ export function activate(context: vscode.ExtensionContext): void {
   const discovery = new CliDiscovery(log);
   reportCliLocation(discovery);
 
+  const roots = new WorkspaceRoots(log);
+  const versionGuard = new VersionGuard();
+  const runner = new CliRunner({
+    binary: () => discovery.locate().path,
+    cwd: () => roots.primary()?.path,
+    readTimeoutSeconds: () => numberSetting('readTimeoutSeconds', 60),
+    writeTimeoutSeconds: () => numberSetting('writeTimeoutSeconds', 0),
+    versionGuard,
+    log,
+    onPossiblyInterrupted: (reason) => {
+      // Recovery itself arrives with the status cache; until then the log is
+      // the only place this can be said.
+      log?.error(`The workspace may be mid-operation: ${reason}. Run fxv status to check.`);
+    },
+  });
+  const fxv = new FxvCommands(runner);
+
+  reportWorkspaceRoot(roots);
+  void probeWorkspace(fxv, roots);
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      roots.invalidate();
+      reportWorkspaceRoot(roots);
+      void probeWorkspace(fxv, roots);
+    }),
+  );
+
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('flexvault.logLevel')) {
         log?.refreshLevel();
       }
       if (event.affectsConfiguration('flexvault.cliPath')) {
-        // A different binary is a different version, so the version guard's
-        // verdict is reset here too once it exists. The rediscovery itself is
-        // left to the next caller: this event fires for every intermediate
-        // value the settings editor writes, and a full PATH scan per keystroke
-        // is not worth an eager log line.
+        // A different binary is a different version, so the guard's verdict
+        // goes with it. The rediscovery itself is left to the next caller:
+        // this event fires for every intermediate value the settings editor
+        // writes, and a full PATH scan per keystroke is not worth an eager
+        // log line.
         discovery.invalidate();
+        versionGuard.reset();
       }
     }),
   );
@@ -55,6 +88,41 @@ function reportCliLocation(discovery: CliDiscovery): void {
   log?.info(`Using the fxv binary at ${location.path}.`);
 }
 
+function reportWorkspaceRoot(roots: WorkspaceRoots): void {
+  const root = roots.primary();
+  if (!root) {
+    log?.info('No FlexVault workspace was found in the open folders.');
+    return;
+  }
+  log?.info(`Using the FlexVault workspace at ${root.path}.`);
+}
+
+/**
+ * One `status` at activation, in the form that takes no workspace lock. It
+ * confirms the binary runs, puts both version gates through their paces, and
+ * records the branch in the log. The status cache that replaces it arrives with
+ * the source control provider.
+ */
+async function probeWorkspace(fxv: FxvCommands, roots: WorkspaceRoots): Promise<void> {
+  if (!roots.primary()) {
+    return;
+  }
+  const result = await fxv.status({ skipRemoteUpdate: true });
+  if (!result.ok) {
+    log?.error(`fxv status failed: ${result.message}`);
+    return;
+  }
+  const { current_branch: branch, file_change_counts: counts, head_commit: head } = result.payload;
+  log?.info(
+    `On branch ${branch} (${head.state}), ${counts.total} changed ${counts.total === 1 ? 'file' : 'files'}.`,
+  );
+}
+
+function numberSetting(name: string, fallback: number): number {
+  const value = vscode.workspace.getConfiguration('flexvault').get<number>(name);
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
 function openLink(name: LinkName): Thenable<boolean> {
   const url = LINKS[name];
   log?.debug(`Opening ${url}.`);
@@ -62,6 +130,8 @@ function openLink(name: LinkName): Thenable<boolean> {
 }
 
 export function deactivate(): void {
+  // In-flight writes are deliberately left running: a window reload must not be
+  // a way to manufacture an interrupted sync.
   log?.info('FlexVault deactivated.');
   log = undefined;
 }

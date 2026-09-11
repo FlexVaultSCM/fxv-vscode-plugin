@@ -6,6 +6,7 @@ src/**
 out/**
 node_modules/**
 esbuild.js
+scripts/**
 eslint.config.mjs
 vitest.config.ts
 tsconfig.json
