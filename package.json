@@ -69,6 +69,12 @@
     "configuration": {
       "title": "FlexVault",
       "properties": {
+        "flexvault.cliPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Absolute path to the `fxv` executable. Leave empty to search the standard install locations and then `PATH`. Machine-scoped on purpose, because it identifies a program this extension runs."
+        },
         "flexvault.logLevel": {
           "type": "string",
           "enum": [
