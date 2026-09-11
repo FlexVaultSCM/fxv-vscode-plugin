@@ -1,0 +1,121 @@
+{
+  "name": "flexvault-vscode",
+  "displayName": "FlexVault",
+  "description": "FlexVault source control integration for Visual Studio Code.",
+  "version": "0.1.0",
+  "publisher": "flexvault",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FlexVaultSCM/fxv-vscode-plugin.git"
+  },
+  "bugs": {
+    "url": "https://discord.gg/KCMHRQBDf"
+  },
+  "homepage": "https://fxv.dev",
+  "qna": "https://discord.gg/KCMHRQBDf",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=20"
+  },
+  "categories": [
+    "SCM Providers"
+  ],
+  "keywords": [
+    "flexvault",
+    "fxv",
+    "source control",
+    "scm",
+    "version control"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "FlexVault runs the fxv executable in the opened workspace, so it stays disabled until the workspace is trusted."
+    }
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:.fxv_workspace",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "flexvault.showLog",
+        "title": "Show Log",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.openDocumentation",
+        "title": "Documentation",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.openWebsite",
+        "title": "Open FlexVault Website",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.reportFeedback",
+        "title": "Feedback & Support on Discord",
+        "category": "FlexVault"
+      }
+    ],
+    "configuration": {
+      "title": "FlexVault",
+      "properties": {
+        "flexvault.logLevel": {
+          "type": "string",
+          "enum": [
+            "off",
+            "error",
+            "info",
+            "debug"
+          ],
+          "default": "info",
+          "scope": "window",
+          "description": "Verbosity of the FlexVault output channel."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "compile": "tsc --noEmit",
+    "lint": "eslint src",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "vitest run",
+    "compile:test": "tsc --outDir out",
+    "pretest:integration": "npm run build && npm run compile:test",
+    "test:integration": "vscode-test",
+    "package": "vsce package --no-dependencies -o flexvault-vscode.vsix",
+    "vscode:prepublish": "npm run build"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.1.1",
+    "diff": "^8.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.21.0",
+    "vitest": "^4.1.11"
+  }
+}

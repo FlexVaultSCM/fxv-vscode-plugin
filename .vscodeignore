@@ -1,0 +1,21 @@
+.github/**
+.vscode/**
+.vscode-test/**
+.vscode-test.mjs
+src/**
+out/**
+node_modules/**
+esbuild.js
+eslint.config.mjs
+vitest.config.ts
+tsconfig.json
+.prettierrc.json
+.prettierignore
+.gitignore
+**/*.map
+**/*.ts
+
+# Local-only documents, untracked but present in a working clone.
+AGENTS.md
+PLAN.md
+RATIONALE.md
