@@ -4,6 +4,7 @@ import {
   classifyExitCode,
   errorData,
   finalKind,
+  interruptedSync,
   isErrorEnvelope,
   isErrorPayload,
   isProgressKind,
@@ -145,7 +146,7 @@ describe('error payloads', () => {
     expect(isErrorEnvelope(parsed.envelope)).toBe(true);
   });
 
-  it('accepts error_data, which the schema does not declare yet', () => {
+  it('reads error_data off the payload', () => {
     if (!parsed.ok) {
       throw new Error('the fixture should parse');
     }
@@ -155,6 +156,60 @@ describe('error payloads', () => {
       return;
     }
     expect(errorData(payload)).toMatchObject({ kind: 'interrupted-sync', version: '1.0' });
+  });
+
+  it('reads the interrupted-sync detail, as the CLI actually writes it', () => {
+    // Shape captured from fxv 0.9.0 by killing a goto partway.
+    const data = {
+      kind: 'interrupted-sync',
+      version: '1.0',
+      payload: {
+        state: 'recoverable',
+        operation: 'goto',
+        summary: 'Was going from main.-.6 to main.-.8.',
+        target_revision: 'main.-.8',
+        source_revision: 'main.-.6',
+        total_entries: 61,
+        completed_entries: 47,
+        preserved_entries: 0,
+        failed_entries: 0,
+        remaining_entries: 14,
+        sampled_unfinished_paths: ['big\\asset045.bin'],
+      },
+    };
+    const detail = interruptedSync(data);
+    expect(detail?.state).toBe('recoverable');
+    if (detail?.state !== 'recoverable') {
+      return;
+    }
+    expect(detail.completed_entries + detail.remaining_entries).toBe(detail.total_entries);
+    expect(detail.operation).toBe('goto');
+  });
+
+  it('reads an unreadable journal, which neither recovery path can act on', () => {
+    const detail = interruptedSync({
+      kind: 'interrupted-sync',
+      version: '1.0',
+      payload: {
+        state: 'unreadable',
+        journal_path: '/ws/.fxv_workspace/state/sync_progress.rkyv',
+        reason: 'magic bytes do not match',
+      },
+    });
+    expect(detail?.state).toBe('unreadable');
+  });
+
+  it('refuses a detail of another kind rather than reading it as this one', () => {
+    expect(
+      interruptedSync({
+        kind: 'something-else',
+        version: '1.0',
+        payload: { state: 'recoverable' },
+      }),
+    ).toBeUndefined();
+    expect(
+      interruptedSync({ kind: 'interrupted-sync', version: '1.0', payload: { state: 'odd' } }),
+    ).toBeUndefined();
   });
 
   it('ignores an error_data that is not a sub-envelope', () => {

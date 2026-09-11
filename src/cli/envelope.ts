@@ -1,4 +1,9 @@
-import type { Envelope as EnvelopeSchema, ErrorPayload } from './types.generated';
+import type {
+  Envelope as EnvelopeSchema,
+  ErrorData,
+  ErrorPayload,
+  InterruptedSyncPayload,
+} from './types.generated';
 
 /**
  * Envelope parsing and the exit-code taxonomy. Pure: no process, no editor
@@ -29,28 +34,12 @@ export interface Envelope<TPayload = unknown> {
 
 /**
  * The nested sub-envelope an error payload may carry, versioned on its own
- * timeline. `error.schema.json` does not declare it yet, so it is typed here
- * and guarded like any other payload version.
+ * timeline and guarded like any other payload version.
  */
-export interface ErrorData {
-  readonly kind: string;
-  readonly version: string;
-  readonly payload: unknown;
-}
+export type { ErrorData, ErrorPayload } from './types.generated';
 
-export interface CliErrorPayload extends ErrorPayload {
-  readonly error_data?: ErrorData;
-}
-
-/** The payload of an `interrupted-sync` error_data, as emitted at 0.9.0. */
-export interface InterruptedSyncData {
-  readonly operation: string;
-  readonly completed_entries: number;
-  readonly remaining_entries: number;
-  readonly failed_entries: number;
-  readonly preserved_entries: number;
-  readonly sampled_unfinished_paths?: string[];
-}
+/** The only `error_data` kind the CLI emits, and the detail behind exit 98. */
+export type { InterruptedSyncPayload } from './types.generated';
 
 /**
  * What an exit code means. Every caller branches on this, never on message
@@ -137,24 +126,24 @@ export function finalKind(kind: string): string {
   return isProgressKind(kind) ? kind.slice(0, -'-progress'.length) : kind;
 }
 
-export function isErrorEnvelope(envelope: Envelope): envelope is Envelope<CliErrorPayload> {
+export function isErrorEnvelope(envelope: Envelope): envelope is Envelope<ErrorPayload> {
   return finalKind(envelope.message.kind) === 'error';
 }
 
 /**
- * Validates the error payload leniently, checking the two fields every consumer
- * reads and leaving the rest alone. `error.schema.json` seals itself with
- * `additionalProperties: false` and does not declare `error_data`, so a strict
- * validator rejects errors the CLI legitimately emits.
+ * Validates the error payload leniently: the two fields every consumer reads,
+ * and nothing else. `error.schema.json` seals itself with
+ * `additionalProperties: false`, so validating strictly would reject an error
+ * from a newer CLI over a field this extension does not even read.
  */
-export function isErrorPayload(payload: unknown): payload is CliErrorPayload {
+export function isErrorPayload(payload: unknown): payload is ErrorPayload {
   if (!isRecord(payload)) {
     return false;
   }
   return typeof payload.message === 'string' && typeof payload.exit_code === 'number';
 }
 
-export function errorData(payload: CliErrorPayload): ErrorData | undefined {
+export function errorData(payload: ErrorPayload): ErrorData | undefined {
   const data: unknown = payload.error_data;
   if (!isRecord(data)) {
     return undefined;
@@ -163,6 +152,21 @@ export function errorData(payload: CliErrorPayload): ErrorData | undefined {
     return undefined;
   }
   return data as unknown as ErrorData;
+}
+
+/**
+ * Reads the `interrupted-sync` detail, and only that kind. A different kind has
+ * a different shape, so the match comes first.
+ */
+export function interruptedSync(data: ErrorData): InterruptedSyncPayload | undefined {
+  if (data.kind !== 'interrupted-sync' || !isRecord(data.payload)) {
+    return undefined;
+  }
+  const state: unknown = data.payload.state;
+  if (state !== 'recoverable' && state !== 'unreadable') {
+    return undefined;
+  }
+  return data.payload as unknown as InterruptedSyncPayload;
 }
 
 function tryParse(text: string): unknown {

@@ -112,6 +112,52 @@ export type ChangeInfoPayload = CommitRefFields & {
  * The kind of change to a file. 'maybe_changed' only arises on a workspace-axis change.
  */
 export type ChangeKind2 = 'added' | 'modified' | 'deleted' | 'maybe_changed';
+/**
+ * Describes a sync/goto/revert/resolve that was interrupted before it finished, leaving the workspace in an inconsistent state. Only ever a detail payload, riding in an error envelope's `error_data` (with `kind` of `interrupted-sync`, alongside exit code 98) when a command refuses to run because of it. `fxv resume` recovers rather than reports, so asking what state a workspace is in is `fxv status`'s job.
+ */
+export type InterruptedSyncPayload =
+  | {
+      state: 'recoverable';
+      /**
+       * The command that was interrupted.
+       */
+      operation: 'sync' | 'goto' | 'revert' | 'resolve' | 'rollback';
+      /**
+       * A ready-to-display sentence describing what the run was doing, phrased per operation, e.g. "Was syncing from main.11 to main.12."
+       */
+      summary: string;
+      /**
+       * Revision spec the interrupted run was moving to, and where a continue finishes.
+       */
+      target_revision: string;
+      /**
+       * Revision spec the workspace is still recorded as synced to, and where a rollback returns to. Absent when the interrupted run was a checkout into a workspace that had never synced.
+       */
+      source_revision?: string;
+      /**
+       * File changes in the interrupted run's plan.
+       */
+      total_entries: number;
+      completed_entries: number;
+      /**
+       * Entries whose locally-modified file was moved aside rather than overwritten.
+       */
+      preserved_entries: number;
+      failed_entries: number;
+      /**
+       * Entries that never reached a terminal state, and which a continue re-drives.
+       */
+      remaining_entries: number;
+      /**
+       * A capped sample of the unfinished paths; `remaining_entries` is the true count.
+       */
+      sampled_unfinished_paths: string[];
+    }
+  | {
+      state: 'unreadable';
+      journal_path: string;
+      reason: string;
+    };
 
 export interface FxvSchemas {
   envelope: Envelope;
@@ -123,6 +169,7 @@ export interface FxvSchemas {
   loginpayload: LoginPayload;
   logoutpayload: LogoutPayload;
   doctorpayload: DoctorPayload;
+  interruptedsyncpayload: InterruptedSyncPayload;
 }
 /**
  * Schema describing the structured output emitted by the flexvault content, including program metadata and task progress details.
@@ -321,13 +368,31 @@ export interface ErrorPayload {
    */
   message: string;
   /**
-   * The process exit code the CLI returns for this failure. 1 is a general error; 99 means the workspace was locked by another process.
+   * The process exit code the CLI returns for this failure. 1 is a general error; 98 means a previous sync was interrupted and the workspace must be recovered with `fxv resume`; 99 means the workspace was locked by another process.
    */
   exit_code: number;
   /**
    * Backtrace captured at the point the error was raised. Present only when backtrace capture was enabled (e.g. RUST_BACKTRACE=1) and a backtrace was available.
    */
   backtrace?: string;
+  error_data?: ErrorData;
+}
+/**
+ * Machine-readable detail for failures that have some, so a consumer can act without parsing `message`. Absent for most errors.
+ */
+export interface ErrorData {
+  /**
+   * Identifies the payload's shape, and therefore which schema describes it. `interrupted-sync` is described by urn:fxv:schema:interrupted-sync:v1.
+   */
+  kind: string;
+  /**
+   * The payload's own major.minor schema version, independent of the error envelope's.
+   */
+  version: string;
+  /**
+   * The detail itself; its shape is determined by `kind`.
+   */
+  payload: {};
 }
 /**
  * Payload schema for the `fxv login` command's JSON output.

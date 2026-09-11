@@ -31,6 +31,8 @@ const SCHEMAS = {
   'login.schema.json': 'LoginPayload',
   'logout.schema.json': 'LogoutPayload',
   'doctor.schema.json': 'DoctorPayload',
+  // Never a top-level message: it rides in an error payload's `error_data`.
+  'interrupted_sync.schema.json': 'InterruptedSyncPayload',
 };
 
 // Pulled in by $ref from the schemas above, and named here so the shared types
@@ -43,7 +45,14 @@ const COMMON_DEFS = {
   authorDetails: 'AuthorDetails',
 };
 
-const SUPPORTING_SCHEMAS = ['common.schema.json', 'init.schema.json', 'user.schema.json'];
+// Not exported, but the envelope's payload `oneOf` references them, so the resolver has
+// to be able to find them.
+const SUPPORTING_SCHEMAS = [
+  'common.schema.json',
+  'init.schema.json',
+  'upgrade.schema.json',
+  'user.schema.json',
+];
 
 function loadSchema(file) {
   try {
