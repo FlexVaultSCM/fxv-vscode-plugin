@@ -75,6 +75,20 @@
           "scope": "machine",
           "markdownDescription": "Absolute path to the `fxv` executable. Leave empty to search the standard install locations and then `PATH`. Machine-scoped on purpose, because it identifies a program this extension runs."
         },
+        "flexvault.readTimeoutSeconds": {
+          "type": "number",
+          "default": 60,
+          "minimum": 0,
+          "scope": "window",
+          "markdownDescription": "How long to wait for a command that only reads, such as `status` or `history`, before stopping it. `0` waits indefinitely."
+        },
+        "flexvault.writeTimeoutSeconds": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "scope": "window",
+          "markdownDescription": "How long to wait for a command that changes the workspace, such as `sync` or `goto`. The command is never stopped: FlexVault gives up waiting and reports it, because stopping a write partway leaves the workspace inconsistent. `0` waits indefinitely."
+        },
         "flexvault.logLevel": {
           "type": "string",
           "enum": [
@@ -94,7 +108,7 @@
     "build": "node esbuild.js --production",
     "watch": "node esbuild.js --watch",
     "compile": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint src scripts",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "npm run test:unit && npm run test:integration",
@@ -102,6 +116,7 @@
     "compile:test": "tsc --outDir out",
     "pretest:integration": "npm run build && npm run compile:test",
     "test:integration": "vscode-test",
+    "types:generate": "node scripts/generate-types.mjs",
     "package": "vsce package --no-dependencies -o flexvault-vscode.vsix",
     "vscode:prepublish": "npm run build"
   },
@@ -119,6 +134,7 @@
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.18.0",
+    "json-schema-to-typescript": "^15.0.4",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.21.0",
