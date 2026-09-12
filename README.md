@@ -39,19 +39,6 @@ On Linux the integration tests need a display. CI runs them under `xvfb-run`.
 
 ---
 
-## Layout
-
-```text
-src/
-  extension.ts        activate / deactivate; wiring only
-  links.ts            canonical FlexVault URLs
-  ui/log.ts           the output channel
-  test/unit/          Vitest, pure logic
-  test/integration/   extension host tests
-```
-
----
-
 ## Feedback & Support
 
 Bug reports, questions, and feedback are welcome on the [FlexVault Discord](https://discord.gg/KCMHRQBDf). The extension exposes the same links in the Command Palette:
