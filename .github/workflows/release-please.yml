@@ -47,6 +47,13 @@ jobs:
 
       - run: npm ci
 
+      - name: Stamp version
+        shell: bash
+        run: |
+          version="${{ needs.release-please.outputs.tag_name }}"
+          clean_version="${version#v}"
+          npm version "$clean_version" --no-git-tag-version --allow-same-version
+
       - name: Package extension
         shell: bash
         run: |
