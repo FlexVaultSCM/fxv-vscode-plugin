@@ -18,10 +18,8 @@ import type {
 import { fixtureText } from './fixtures';
 
 /**
- * The envelope path against bytes a real `fxv` wrote, rather than against
- * envelopes this repository made up. Everything else in the unit suite builds
- * its own payloads, which proves the code does what it was written to do but
- * not that the CLI agrees.
+ * The envelope path against bytes a real `fxv` wrote. The rest of the suite
+ * builds its own payloads, which never proves the CLI agrees.
  */
 
 /** Parses a success fixture and asserts its kind, the way the runner does. */
@@ -34,8 +32,7 @@ function successFixture<TPayload>(name: string, kind: string): TPayload {
   expect(parsed.envelope.message.kind).toBe(kind);
   expect(isErrorEnvelope(parsed.envelope)).toBe(false);
 
-  // Every success fixture's payload version has to be one the generated types
-  // can read, which is the check the runner runs on every call.
+  // The check the runner makes on every call.
   const guard = new VersionGuard();
   expect(guard.checkMessage(kind, parsed.envelope.message.version)).toEqual({
     ok: true,
@@ -65,9 +62,8 @@ describe('captured envelopes', () => {
     const revert = successFixture<WorkspaceSyncPayload>('revert.json', 'revert');
     expect(revert.target_revision).toBe('main.-.7');
 
-    // All three snapshot the workspace before moving it, so created_revisions is
-    // not the thing that tells the kinds apart: the envelope's kind is. Worth
-    // pinning, because the destructive-command copy promises that snapshot.
+    // All three snapshot before moving, so the kind is the only discriminator.
+    // Pinned because the destructive-command copy promises that snapshot.
     for (const payload of [sync, goto, revert]) {
       expect(payload.created_revisions?.length).toBeGreaterThan(0);
     }
@@ -144,8 +140,7 @@ describe('captured error envelopes', () => {
       return;
     }
 
-    // The nested sub-envelope is versioned on its own timeline and guarded like
-    // any other payload version.
+    // Versioned on its own timeline, guarded like any other payload.
     const guard = new VersionGuard();
     expect(guard.checkMessage(data.kind, data.version)).toEqual({ ok: true, checked: true });
 
@@ -155,7 +150,7 @@ describe('captured error envelopes', () => {
       return;
     }
     expect(detail.operation).toBe('goto');
-    // Enough to build the recovery banner without parsing the message text.
+    // Enough for the recovery banner without parsing the message text.
     expect(detail.completed_entries + detail.remaining_entries).toBe(detail.total_entries);
     expect(detail.sampled_unfinished_paths).toHaveLength(detail.remaining_entries);
   });
@@ -169,9 +164,8 @@ describe('the version guard against captured program versions', () => {
       throw new Error(parsed.reason);
     }
 
-    // The oldest fixtures were captured well below any floor this extension
-    // pins, which is what the injectable range in the guard exists for: a
-    // payload the guard turns away still has to parse.
+    // Below any floor this extension pins: what the injectable range exists for.
+    // A payload the guard turns away still has to parse.
     const verdict = new VersionGuard().checkProgram(parsed.envelope.program.version);
     expect(verdict.ok).toBe(false);
     if (verdict.ok) {
