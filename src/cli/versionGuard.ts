@@ -1,8 +1,5 @@
-import { finalKind } from './envelope';
-
 /**
- * The two version gates: the binary's own version, and the payload contract of
- * each message kind being parsed. Pure, and the range is injectable so fixture
+ * The CLI binary version gate. Pure, and the range is injectable so fixture
  * tests can assert parse behavior without every fixture having to sit inside
  * the supported range.
  */
@@ -23,7 +20,6 @@ export interface VersionRange {
 }
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$/;
-const MAJOR_MINOR = /^(\d+)\.(\d+)$/;
 
 export function parseSemVer(text: string): SemVer | undefined {
   const match = SEMVER.exec(text.trim());
@@ -38,15 +34,6 @@ export function parseSemVer(text: string): SemVer | undefined {
     ...(prerelease === undefined ? {} : { prerelease }),
     ...(build === undefined ? {} : { build }),
   };
-}
-
-/** A message version is `major.minor` and nothing else. */
-export function parseMessageVersion(text: string): { major: number; minor: number } | undefined {
-  const match = MAJOR_MINOR.exec(text.trim());
-  if (!match) {
-    return undefined;
-  }
-  return { major: Number(match[1]), minor: Number(match[2]) };
 }
 
 /**
@@ -69,27 +56,6 @@ export const SUPPORTED_CLI_RANGE: VersionRange = {
   ceiling: { major: 0, minor: 10, patch: 0 },
 };
 
-/**
- * The payload contract each kind was generated from. A schema bump is a
- * one-line diff here, next to the regenerated types.
- */
-export const MESSAGE_VERSIONS: Readonly<Record<string, string>> = {
-  status: '1.0',
-  history: '1.0',
-  changeinfo: '1.0',
-  goto: '1.0',
-  sync: '1.0',
-  revert: '1.0',
-  resume: '1.0',
-  doctor: '1.0',
-  init: '1.0',
-  login: '1.0',
-  logout: '1.0',
-  error: '1.1',
-  // The error payload's nested sub-envelope is versioned on its own timeline.
-  'interrupted-sync': '1.0',
-};
-
 export type ProgramProblem = 'unparsable' | 'below-floor' | 'above-ceiling';
 
 /** What the user can be offered when the program version is out of range. */
@@ -106,32 +72,18 @@ export type ProgramVerdict =
       readonly upgradeCommandAvailable: boolean;
     };
 
-export type MessageProblem = 'unparsable' | 'major-mismatch' | 'below-expected';
-
-export type MessageVerdict =
-  | { readonly ok: true; readonly checked: boolean }
-  | {
-      readonly ok: false;
-      readonly problem: MessageProblem;
-      readonly message: string;
-      readonly remedy: Remedy;
-    };
-
 export interface VersionGuardOptions {
   readonly range?: VersionRange;
-  readonly messageVersions?: Readonly<Record<string, string>>;
   readonly platform?: NodeJS.Platform | string;
 }
 
 export class VersionGuard {
   private readonly range: VersionRange;
-  private readonly messageVersions: Readonly<Record<string, string>>;
   private readonly platform: NodeJS.Platform | string;
   private programVerdict: ProgramVerdict | undefined;
 
   constructor(options: VersionGuardOptions = {}) {
     this.range = options.range ?? SUPPORTED_CLI_RANGE;
-    this.messageVersions = options.messageVersions ?? MESSAGE_VERSIONS;
     this.platform = options.platform ?? process.platform;
   }
 
@@ -157,42 +109,6 @@ export class VersionGuard {
     const verdict = this.evaluateProgram(version);
     this.programVerdict = verdict;
     return verdict;
-  }
-
-  checkMessage(kind: string, version: string): MessageVerdict {
-    const expectedText = this.messageVersions[finalKind(kind)];
-    if (expectedText === undefined) {
-      // A kind outside the table is a kind nothing here parses, so there is no
-      // contract to break.
-      return { ok: true, checked: false };
-    }
-    const expected = parseMessageVersion(expectedText);
-    const actual = parseMessageVersion(version);
-    if (!expected || !actual) {
-      return {
-        ok: false,
-        problem: 'unparsable',
-        message: `The fxv CLI reported a ${kind} payload version of "${version}", which is not a major.minor version.`,
-        remedy: 'upgrade-extension',
-      };
-    }
-    if (actual.major > expected.major) {
-      return {
-        ok: false,
-        problem: 'major-mismatch',
-        message: `The fxv CLI emits version ${version} of the ${kind} payload, and this extension reads version ${expectedText}. Update the FlexVault extension.`,
-        remedy: 'upgrade-extension',
-      };
-    }
-    if (actual.major < expected.major || actual.minor < expected.minor) {
-      return {
-        ok: false,
-        problem: 'below-expected',
-        message: `The fxv CLI emits version ${version} of the ${kind} payload, and this extension needs at least ${expectedText}. Update the fxv CLI.`,
-        remedy: 'upgrade-cli',
-      };
-    }
-    return { ok: true, checked: true };
   }
 
   private evaluateProgram(version: string): ProgramVerdict {

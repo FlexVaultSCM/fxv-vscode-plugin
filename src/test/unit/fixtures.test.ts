@@ -8,7 +8,7 @@ import {
   parseEnvelope,
 } from '../../cli/envelope';
 import { parseSpec, specFromCommitInfo } from '../../cli/revision';
-import { MESSAGE_VERSIONS, VersionGuard } from '../../cli/versionGuard';
+import { VersionGuard } from '../../cli/versionGuard';
 import type {
   ChangeInfoPayload,
   HistoryPayload,
@@ -31,13 +31,6 @@ function successFixture<TPayload>(name: string, kind: string): TPayload {
   }
   expect(parsed.envelope.message.kind).toBe(kind);
   expect(isErrorEnvelope(parsed.envelope)).toBe(false);
-
-  // The check the runner makes on every call.
-  const guard = new VersionGuard();
-  expect(guard.checkMessage(kind, parsed.envelope.message.version)).toEqual({
-    ok: true,
-    checked: true,
-  });
 
   return parsed.envelope.message.payload;
 }
@@ -140,10 +133,6 @@ describe('captured error envelopes', () => {
       return;
     }
 
-    // Versioned on its own timeline, guarded like any other payload.
-    const guard = new VersionGuard();
-    expect(guard.checkMessage(data.kind, data.version)).toEqual({ ok: true, checked: true });
-
     const detail = interruptedSync(data);
     expect(detail).toBeDefined();
     if (!detail || !('operation' in detail)) {
@@ -185,27 +174,5 @@ describe('the version guard against captured program versions', () => {
       ok: true,
       version: { major: 0, minor: 9, patch: 0 },
     });
-  });
-
-  it('has a version-table entry for every kind the fixtures carry', () => {
-    const fixtures = [
-      'status.json',
-      'history.json',
-      'changeinfo.json',
-      'sync.json',
-      'goto.json',
-      'revert.json',
-      'logout.json',
-      'init.json',
-    ];
-
-    for (const name of fixtures) {
-      const parsed = parseEnvelope(fixtureText(name));
-      expect(parsed.ok, name).toBe(true);
-      if (!parsed.ok) {
-        continue;
-      }
-      expect(MESSAGE_VERSIONS, name).toHaveProperty(parsed.envelope.message.kind);
-    }
   });
 });
