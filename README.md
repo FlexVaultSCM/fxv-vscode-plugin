@@ -11,7 +11,7 @@ Visual Studio Code source control integration for [FlexVault](https://fxv.dev). 
 ## Requirements
 
 - **VS Code**: 1.85.0 or newer.
-- **Node.js**: 20 or newer, for development.
+- **Node.js**: 22 or newer, for development. The extension-host test harness needs it.
 - **FlexVault CLI**: `fxv`, on `PATH` or at `flexvault.cliPath`.
 
 Each extension release supports the range of CLI versions it was tested against and refuses to guess outside it: below the floor it asks you to update the CLI, at or above the ceiling to update the extension, which is where support for a newer CLI arrives. The range this build enforces is `SUPPORTED_CLI_RANGE` in `src/cli/versionGuard.ts`, and the extension names it in the message it blocks with, so it is worth reading there rather than from a number written down twice.
