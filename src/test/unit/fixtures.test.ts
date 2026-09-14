@@ -169,8 +169,9 @@ describe('the version guard against captured program versions', () => {
       throw new Error(parsed.reason);
     }
 
-    // 0.4.0 is below any floor this extension pins, which is what the injectable
-    // range in the guard exists for: the payload above still has to parse.
+    // The oldest fixtures were captured well below any floor this extension
+    // pins, which is what the injectable range in the guard exists for: a
+    // payload the guard turns away still has to parse.
     const verdict = new VersionGuard().checkProgram(parsed.envelope.program.version);
     expect(verdict.ok).toBe(false);
     if (verdict.ok) {
