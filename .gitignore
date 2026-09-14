@@ -9,6 +9,3 @@ out/
 AGENTS.md
 PLAN.md
 RATIONALE.md
-
-# The sibling schema/fixture repository, checked out here by CI.
-fxv-api-rs/

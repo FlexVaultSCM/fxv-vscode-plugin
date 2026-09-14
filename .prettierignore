@@ -3,4 +3,3 @@ out/
 node_modules/
 .vscode-test/
 CHANGELOG.md
-fxv-api-rs/

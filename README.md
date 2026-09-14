@@ -39,19 +39,6 @@ Press `F5` to launch the Extension Development Host with the extension loaded.
 
 On Linux the integration tests need a display. CI runs them under `xvfb-run`.
 
-### The sibling schema repository
-
-`src/cli/types.generated.ts` is generated from the JSON schemas in [`fxv-api-rs`](https://github.com/FlexVaultSCM/fxv-api-rs), and the unit suite parses the envelopes captured under its `tests/fixtures/`. Neither is copied in here: a private copy is a second thing to keep current, and the point of testing against captured envelopes is that they are bytes the CLI really wrote.
-
-Check `fxv-api-rs` out next to this repository, or point the two environment variables elsewhere:
-
-```sh
-npm run types:generate   # FXV_SCHEMAS_DIR=/path/to/fxv-api-rs/schemas
-npm run test:unit        # FXV_FIXTURES_DIR=/path/to/fxv-api-rs/tests/fixtures
-```
-
-CI checks the repository out and fails if the committed types differ from what the schemas generate, so a wire-format change lands as a red build rather than as a bug in the field.
-
 ---
 
 ## Feedback & Support

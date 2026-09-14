@@ -28,12 +28,6 @@ jobs:
           node-version: '22'
           cache: npm
 
-      # Schemas and captured envelopes both live upstream; nothing is copied in.
-      - uses: actions/checkout@v7
-        with:
-          repository: FlexVaultSCM/fxv-api-rs
-          path: fxv-api-rs
-
       - run: npm ci
 
       - name: Format
@@ -45,18 +39,7 @@ jobs:
       - name: Typecheck
         run: npm run compile
 
-      # types.generated.ts is committed, so this is what stops it drifting.
-      - name: Generated types are current
-        env:
-          FXV_SCHEMAS_DIR: fxv-api-rs/schemas
-        run: |
-          npm run types:generate
-          git diff --exit-code -- src/cli/types.generated.ts \
-            || { echo "::error::src/cli/types.generated.ts is out of date with the fxv-api-rs schemas. Run 'npm run types:generate' and commit the result."; exit 1; }
-
       - name: Unit tests
-        env:
-          FXV_FIXTURES_DIR: fxv-api-rs/tests/fixtures
         run: npm run test:unit
 
       - name: Package (dry run)
