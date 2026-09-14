@@ -17,7 +17,7 @@
   "qna": "https://discord.gg/KCMHRQBDf",
   "engines": {
     "vscode": "^1.85.0",
-    "node": ">=20"
+    "node": ">=22"
   },
   "categories": [
     "SCM Providers"
@@ -129,8 +129,8 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.0",
     "@types/vscode": "1.85.0",
-    "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.18.0",

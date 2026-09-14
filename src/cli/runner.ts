@@ -452,17 +452,6 @@ export class CliRunner {
         raw,
       };
     }
-    const message = this.guard.checkMessage(envelope.message.kind, envelope.message.version);
-    if (!message.ok) {
-      return {
-        ok: false,
-        failure: 'version',
-        message: message.message,
-        exitCode: null,
-        exitClass: 'general',
-        raw,
-      };
-    }
     return undefined;
   }
 
@@ -513,16 +502,7 @@ export class CliRunner {
    * report numbers that mean something else.
    */
   private guardedErrorData(payload: ErrorPayload): ErrorData | undefined {
-    const data = readErrorData(payload);
-    if (!data) {
-      return undefined;
-    }
-    const verdict = this.guard.checkMessage(data.kind, data.version);
-    if (!verdict.ok) {
-      this.deps.log?.error(`Ignoring the ${data.kind} detail on this error: ${verdict.message}`);
-      return undefined;
-    }
-    return data;
+    return readErrorData(payload);
   }
 
   private parseFailure(
