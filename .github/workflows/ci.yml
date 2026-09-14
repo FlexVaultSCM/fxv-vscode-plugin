@@ -28,6 +28,13 @@ jobs:
           node-version: '20'
           cache: npm
 
+      # The schemas and the captured envelopes both live upstream, and the unit
+      # suite reads the fixtures directly rather than keeping a private copy.
+      - uses: actions/checkout@v7
+        with:
+          repository: FlexVaultSCM/fxv-api-rs
+          path: fxv-api-rs
+
       - run: npm ci
 
       - name: Format
@@ -39,7 +46,20 @@ jobs:
       - name: Typecheck
         run: npm run compile
 
+      # src/cli/types.generated.ts is committed because CI cannot assume the
+      # sibling checkout at build time, so this is what stops it drifting from
+      # the schemas it claims to be generated from.
+      - name: Generated types are current
+        env:
+          FXV_SCHEMAS_DIR: fxv-api-rs/schemas
+        run: |
+          npm run types:generate
+          git diff --exit-code -- src/cli/types.generated.ts \
+            || { echo "::error::src/cli/types.generated.ts is out of date with the fxv-api-rs schemas. Run 'npm run types:generate' and commit the result."; exit 1; }
+
       - name: Unit tests
+        env:
+          FXV_FIXTURES_DIR: fxv-api-rs/tests/fixtures
         run: npm run test:unit
 
       - name: Package (dry run)
@@ -57,7 +77,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Windows is the primary target, but binary discovery and path handling
+        # differ on all three, so all three run.
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 
@@ -68,10 +90,11 @@ jobs:
 
       - run: npm ci
 
+      # Linux needs a display for the extension host; macOS and Windows have one.
       - name: Integration tests (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:integration
 
-      - name: Integration tests (Windows)
-        if: runner.os == 'Windows'
+      - name: Integration tests
+        if: runner.os != 'Linux'
         run: npm run test:integration
