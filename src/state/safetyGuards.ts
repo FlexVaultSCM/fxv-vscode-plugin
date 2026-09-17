@@ -1,6 +1,28 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+export interface DocumentPath {
+  readonly scheme: string;
+  readonly fsPath: string;
+}
+
+export function isPathUnderRoot(filePath: string, rootPath: string): boolean {
+  const rel = path.relative(rootPath, filePath);
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+export function filterDirtyDocsUnderRoot<T extends DocumentPath>(
+  docs: readonly T[],
+  rootPath: string,
+): T[] {
+  return docs.filter((doc) => {
+    if (doc.scheme !== 'file') {
+      return false;
+    }
+    return isPathUnderRoot(doc.fsPath, rootPath);
+  });
+}
+
 export interface SafetyGuardOptions {
   /** The workspace root URI. */
   readonly rootUri?: vscode.Uri | undefined;
@@ -52,13 +74,10 @@ export async function assertSafeToMutate(options: SafetyGuardOptions): Promise<b
       ? options.getDirtyDocuments()
       : vscode.workspace.textDocuments.filter((doc) => doc.isDirty);
 
-    const dirtyUnderRoot = dirtyDocs.filter((doc) => {
-      if (doc.uri.scheme !== 'file') {
-        return false;
-      }
-      const rel = path.relative(options.rootUri!.fsPath, doc.uri.fsPath);
-      return !rel.startsWith('..') && !path.isAbsolute(rel);
-    });
+    const dirtyUnderRoot = filterDirtyDocsUnderRoot(
+      dirtyDocs.map((d) => ({ scheme: d.uri.scheme, fsPath: d.uri.fsPath })),
+      options.rootUri.fsPath,
+    );
 
     if (dirtyUnderRoot.length > 0) {
       const count = dirtyUnderRoot.length;

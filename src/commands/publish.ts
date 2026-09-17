@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { assertSafeToMutate } from '../state/safetyGuards';
 import { withMutationProgress } from '../ui/progress';
+import { handleCommandFailure } from './errorHandler';
 import type { CommandContext } from './types';
 
 /**
@@ -18,9 +19,17 @@ import type { CommandContext } from './types';
  */
 export async function publishCommand(
   ctx: CommandContext,
-  explicitDescription?: string,
+  explicitDescription?: unknown,
 ): Promise<void> {
-  const status = ctx.statusCache?.status;
+  if (!ctx.rootUri) {
+    void vscode.window.showErrorMessage('No FlexVault workspace is currently open.');
+    return;
+  }
+
+  let status = ctx.statusCache?.status;
+  if (!status && ctx.statusCache) {
+    status = await ctx.statusCache.refresh({ skipRemoteUpdate: true });
+  }
 
   // 1. Refuse while conflicts exist
   const hasConflicts = status?.files.some(
@@ -48,7 +57,8 @@ export async function publishCommand(
 
   // 3. Resolve description: prefer SCM input box, prompt if both empty
   const inputBox = ctx.scmProvider?.inputBox;
-  let description = explicitDescription?.trim() || inputBox?.value.trim() || '';
+  const explicit = typeof explicitDescription === 'string' ? explicitDescription.trim() : '';
+  let description = explicit || inputBox?.value.trim() || '';
 
   if (description.length === 0) {
     const prompted = await vscode.window.showInputBox({
@@ -72,9 +82,7 @@ export async function publishCommand(
     // 5. Snapshot step
     const snapshotResult = await ctx.fxv.snapshot(description);
     if (!snapshotResult.ok) {
-      void vscode.window
-        .showErrorMessage(`Snapshot failed: ${snapshotResult.message}`, 'Show Log')
-        .then((act) => act === 'Show Log' && ctx.log?.show());
+      handleCommandFailure('Snapshot', snapshotResult, ctx);
       return;
     }
 
@@ -96,12 +104,16 @@ export async function publishCommand(
 
       const syncResult = await ctx.fxv.sync();
       if (!syncResult.ok) {
-        void vscode.window
-          .showErrorMessage(
-            `Sync failed: ${syncResult.message}. Your changes are safe as an unpublished draft.`,
-            'Show Log',
-          )
-          .then((act) => act === 'Show Log' && ctx.log?.show());
+        if (syncResult.exitCode === 99 || syncResult.exitCode === 98) {
+          handleCommandFailure('Sync', syncResult, ctx);
+        } else {
+          void vscode.window
+            .showErrorMessage(
+              `Sync failed: ${syncResult.message}. Your changes are safe as an unpublished draft.`,
+              'Show Log',
+            )
+            .then((act) => act === 'Show Log' && ctx.log?.show());
+        }
         await ctx.statusCache?.refresh({ skipRemoteUpdate: true });
         return;
       }
@@ -120,12 +132,16 @@ export async function publishCommand(
     // 7. Publish step
     const publishResult = await ctx.fxv.publish(description);
     if (!publishResult.ok) {
-      void vscode.window
-        .showErrorMessage(
-          `Publish failed: ${publishResult.message}. The snapshot succeeded locally and your changes remain an unpublished draft.`,
-          'Show Log',
-        )
-        .then((act) => act === 'Show Log' && ctx.log?.show());
+      if (publishResult.exitCode === 99 || publishResult.exitCode === 98) {
+        handleCommandFailure('Publish', publishResult, ctx);
+      } else {
+        void vscode.window
+          .showErrorMessage(
+            `Publish failed: ${publishResult.message}. The snapshot succeeded locally and your changes remain an unpublished draft.`,
+            'Show Log',
+          )
+          .then((act) => act === 'Show Log' && ctx.log?.show());
+      }
       await ctx.statusCache?.refresh({ skipRemoteUpdate: true });
       return;
     }

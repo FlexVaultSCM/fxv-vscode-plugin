@@ -5,14 +5,27 @@ import type { ResolveStrategy, ResolveTarget } from '../cli/commands';
 import type { FlexVaultResourceState } from '../scm/provider';
 import { assertSafeToMutate } from '../state/safetyGuards';
 import { withMutationProgress } from '../ui/progress';
+import { handleCommandFailure } from './errorHandler';
 import type { CommandContext } from './types';
 
 export async function resolveCommand(
   ctx: CommandContext,
   strategy: ResolveStrategy,
-  resource?: FlexVaultResourceState | vscode.SourceControlResourceState,
-  selected?: (FlexVaultResourceState | vscode.SourceControlResourceState)[],
+  resource?: FlexVaultResourceState | vscode.SourceControlResourceState | vscode.Uri,
+  selected?: (FlexVaultResourceState | vscode.SourceControlResourceState | vscode.Uri)[],
 ): Promise<void> {
+  if (!ctx.rootUri) {
+    void vscode.window.showErrorMessage('No FlexVault workspace is currently open.');
+    return;
+  }
+
+  // Safety guards checked before modal confirmation
+  const safe = await assertSafeToMutate({ rootUri: ctx.rootUri });
+  if (!safe) {
+    return;
+  }
+
+  const hasTargetArgs = resource !== undefined || (Array.isArray(selected) && selected.length > 0);
   const paths = extractPaths(ctx, resource, selected);
   let target: ResolveTarget;
 
@@ -31,7 +44,7 @@ export async function resolveCommand(
       }
     }
     target = { paths };
-  } else {
+  } else if (!hasTargetArgs) {
     const choice = await vscode.window.showWarningMessage(
       `Resolve all conflicts using '${strategy}'?`,
       { modal: true },
@@ -41,10 +54,8 @@ export async function resolveCommand(
       return;
     }
     target = { all: true };
-  }
-
-  const safe = await assertSafeToMutate({ rootUri: ctx.rootUri });
-  if (!safe) {
+  } else {
+    void vscode.window.showErrorMessage('Unable to determine files to resolve.');
     return;
   }
 
@@ -53,9 +64,9 @@ export async function resolveCommand(
   });
 
   if (!result.ok) {
-    void vscode.window
-      .showErrorMessage(`Resolve failed: ${result.message}`, 'Show Log')
-      .then((act) => act === 'Show Log' && ctx.log?.show());
+    handleCommandFailure('Resolve', result, ctx, () =>
+      resolveCommand(ctx, strategy, resource, selected),
+    );
     return;
   }
 
@@ -63,6 +74,10 @@ export async function resolveCommand(
   if (conflicts && conflicts.length > 0) {
     void vscode.window.showWarningMessage(
       `Resolved, but ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'} remain.`,
+    );
+  } else if (result.payload.error_count > 0) {
+    void vscode.window.showWarningMessage(
+      `Resolved, but ${result.payload.error_count} file${result.payload.error_count === 1 ? '' : 's'} could not be updated.`,
     );
   } else {
     void vscode.window.showInformationMessage('Conflicts resolved successfully.');
@@ -73,10 +88,10 @@ export async function resolveCommand(
 
 function extractPaths(
   ctx: CommandContext,
-  resource?: FlexVaultResourceState | vscode.SourceControlResourceState,
-  selected?: (FlexVaultResourceState | vscode.SourceControlResourceState)[],
+  resource?: unknown,
+  selected?: unknown[],
 ): string[] {
-  if (selected && selected.length > 0) {
+  if (Array.isArray(selected) && selected.length > 0) {
     return selected
       .map((item) => extractSinglePath(ctx, item))
       .filter((p): p is string => p !== undefined);
@@ -88,15 +103,26 @@ function extractPaths(
   return [];
 }
 
-function extractSinglePath(
-  ctx: CommandContext,
-  item: FlexVaultResourceState | vscode.SourceControlResourceState,
-): string | undefined {
-  if ('descriptor' in item && item.descriptor?.path) {
-    return item.descriptor.path;
+function extractSinglePath(ctx: CommandContext, item: unknown): string | undefined {
+  if (!item || typeof item !== 'object') {
+    return undefined;
   }
-  if (item.resourceUri && ctx.rootUri) {
-    const rel = path.relative(ctx.rootUri.fsPath, item.resourceUri.fsPath);
+  if ('descriptor' in item) {
+    const desc = (item as FlexVaultResourceState).descriptor;
+    if (desc?.path) {
+      return desc.path;
+    }
+  }
+  if ('resourceUri' in item) {
+    const resUri = (item as vscode.SourceControlResourceState).resourceUri;
+    if (resUri && ctx.rootUri) {
+      const rel = path.relative(ctx.rootUri.fsPath, resUri.fsPath);
+      return rel.replace(/\\/g, '/');
+    }
+  }
+  if ('fsPath' in item && ctx.rootUri) {
+    const uri = item as vscode.Uri;
+    const rel = path.relative(ctx.rootUri.fsPath, uri.fsPath);
     return rel.replace(/\\/g, '/');
   }
   return undefined;

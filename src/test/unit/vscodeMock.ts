@@ -68,3 +68,37 @@ export const workspace = {
 export const debug = {
   activeDebugSession: undefined as unknown,
 };
+
+export const scm = {
+  createSourceControl: vi.fn().mockImplementation((id: string, label: string, rootUri: unknown) => {
+    const resourceGroups: Array<{
+      id: string;
+      label: string;
+      hideWhenEmpty?: boolean;
+      resourceStates: unknown[];
+      dispose: () => void;
+    }> = [];
+
+    return {
+      id,
+      label,
+      rootUri,
+      inputBox: { placeholder: '', enabled: true, value: '' },
+      acceptInputCommand: undefined,
+      count: 0,
+      createResourceGroup: vi.fn().mockImplementation((groupId: string, groupLabel: string) => {
+        const group = {
+          id: groupId,
+          label: groupLabel,
+          hideWhenEmpty: false,
+          resourceStates: [],
+          dispose: vi.fn(),
+        };
+        resourceGroups.push(group);
+        return group;
+      }),
+      resourceGroups,
+      dispose: vi.fn(),
+    };
+  }),
+};

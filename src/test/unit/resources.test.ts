@@ -144,7 +144,7 @@ describe('SCM Resources Mapping', () => {
     expect(getChangeKindTooltip('added')).toBe('Added');
     expect(getChangeKindTooltip('modified')).toBe('Modified');
     expect(getChangeKindTooltip('deleted')).toBe('Deleted');
-    expect(getChangeKindTooltip('maybe_changed')).toBe('May be unchanged');
+    expect(getChangeKindTooltip('maybe_changed')).toBe('Modified');
   });
 
   it('sets strikeThrough and isDeleted for deleted files', () => {

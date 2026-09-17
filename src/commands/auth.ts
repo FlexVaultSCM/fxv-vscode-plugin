@@ -1,11 +1,17 @@
 import * as vscode from 'vscode';
 
 import { withMutationProgress } from '../ui/progress';
+import { handleCommandFailure } from './errorHandler';
 import type { CommandContext } from './types';
 
 const LAST_USERNAME_KEY = 'flexvault.lastUsername';
 
 export async function loginCommand(ctx: CommandContext): Promise<void> {
+  if (!ctx.rootUri) {
+    void vscode.window.showErrorMessage('No FlexVault workspace is currently open.');
+    return;
+  }
+
   const lastUsername = ctx.context.workspaceState.get<string>(LAST_USERNAME_KEY) ?? '';
 
   const username = await vscode.window.showInputBox({
@@ -26,9 +32,7 @@ export async function loginCommand(ctx: CommandContext): Promise<void> {
   });
 
   if (!result.ok) {
-    void vscode.window
-      .showErrorMessage(`Login failed: ${result.message}`, 'Show Log')
-      .then((act) => act === 'Show Log' && ctx.log?.show());
+    handleCommandFailure('Login', result, ctx, () => loginCommand(ctx));
     return;
   }
 
@@ -39,14 +43,17 @@ export async function loginCommand(ctx: CommandContext): Promise<void> {
 }
 
 export async function logoutCommand(ctx: CommandContext): Promise<void> {
+  if (!ctx.rootUri) {
+    void vscode.window.showErrorMessage('No FlexVault workspace is currently open.');
+    return;
+  }
+
   const result = await withMutationProgress('Logging out...', async () => {
     return await ctx.fxv.logout();
   });
 
   if (!result.ok) {
-    void vscode.window
-      .showErrorMessage(`Logout failed: ${result.message}`, 'Show Log')
-      .then((act) => act === 'Show Log' && ctx.log?.show());
+    handleCommandFailure('Logout', result, ctx, () => logoutCommand(ctx));
     return;
   }
 

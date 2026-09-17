@@ -263,4 +263,15 @@ describe('publishCommand', () => {
     expect(publishCalls.length).toBe(0);
     expect(errors.some((e) => e.includes('Sync produced 1 conflict'))).toBe(true);
   });
+
+  it('safely handles non-string argument passed from SCM title menu', async () => {
+    const { ctx, snapshotCalls, publishCalls, inputBox } = createMockContext();
+    inputBox.value = 'Fix from menu';
+    const mockSourceControl = { id: 'flexvault' };
+
+    await publishCommand(ctx, mockSourceControl);
+
+    expect(snapshotCalls).toEqual(['Fix from menu']);
+    expect(publishCalls).toEqual(['Fix from menu']);
+  });
 });

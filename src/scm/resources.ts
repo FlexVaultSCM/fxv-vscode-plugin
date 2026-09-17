@@ -61,11 +61,10 @@ export function getChangeKindTooltip(kind: ChangeKind): string {
     case 'added':
       return 'Added';
     case 'modified':
+    case 'maybe_changed':
       return 'Modified';
     case 'deleted':
       return 'Deleted';
-    case 'maybe_changed':
-      return 'May be unchanged';
   }
 }
 

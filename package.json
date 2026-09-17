@@ -72,11 +72,6 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "flexvault.snapshot",
-        "title": "Snapshot",
-        "category": "FlexVault"
-      },
-      {
         "command": "flexvault.publish",
         "title": "Publish",
         "category": "FlexVault"
@@ -136,13 +131,8 @@
           "when": "flexvault.enabled"
         },
         {
-          "command": "flexvault.snapshot",
-          "group": "1_main@1",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
-        },
-        {
           "command": "flexvault.publish",
-          "group": "1_main@2",
+          "group": "1_main@1",
           "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.hasConflicts && flexvault.loggedIn"
         },
         {
@@ -160,30 +150,54 @@
         {
           "command": "flexvault.revert",
           "group": "inline@1",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "scmProvider == flexvault && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
         },
         {
           "command": "flexvault.revert",
           "group": "1_revert",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "scmProvider == flexvault && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
         },
         {
           "command": "flexvault.resolveMine",
           "group": "2_resolve@1",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && scmResourceGroup == conflicts"
+          "when": "scmProvider == flexvault && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && scmResourceGroup == conflicts"
         },
         {
           "command": "flexvault.resolveTheirs",
           "group": "2_resolve@2",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && scmResourceGroup == conflicts"
+          "when": "scmProvider == flexvault && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && scmResourceGroup == conflicts"
         },
         {
           "command": "flexvault.resolveUndo",
           "group": "2_resolve@3",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && scmResourceGroup == conflicts"
+          "when": "scmProvider == flexvault && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && scmResourceGroup == conflicts"
         }
       ],
       "commandPalette": [
+        {
+          "command": "flexvault.publish",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.hasConflicts && flexvault.loggedIn"
+        },
+        {
+          "command": "flexvault.sync",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+        },
+        {
+          "command": "flexvault.goto",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+        },
+        {
+          "command": "flexvault.revert",
+          "when": "false"
+        },
+        {
+          "command": "flexvault.refresh",
+          "when": "flexvault.enabled"
+        },
+        {
+          "command": "flexvault.openSettings",
+          "when": "flexvault.enabled"
+        },
         {
           "command": "flexvault.login",
           "when": "flexvault.enabled && !flexvault.loggedIn"
@@ -194,15 +208,15 @@
         },
         {
           "command": "flexvault.resolveMine",
-          "when": "flexvault.enabled && flexvault.hasConflicts"
+          "when": "false"
         },
         {
           "command": "flexvault.resolveTheirs",
-          "when": "flexvault.enabled && flexvault.hasConflicts"
+          "when": "false"
         },
         {
           "command": "flexvault.resolveUndo",
-          "when": "flexvault.enabled && flexvault.hasConflicts"
+          "when": "false"
         }
       ]
     },

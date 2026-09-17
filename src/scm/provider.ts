@@ -67,7 +67,7 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     this.conflictsGroup.hideWhenEmpty = true;
 
     this.unpublishedGroup = this.scm.createResourceGroup('unpublished', 'Unpublished');
-    this.unpublishedGroup.hideWhenEmpty = false;
+    this.unpublishedGroup.hideWhenEmpty = true;
 
     this.workspaceGroup = this.scm.createResourceGroup('workspace', 'Pending Snapshot');
     this.workspaceGroup.hideWhenEmpty = false;

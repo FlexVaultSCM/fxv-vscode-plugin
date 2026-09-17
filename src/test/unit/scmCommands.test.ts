@@ -5,7 +5,6 @@ import { loginCommand, logoutCommand } from '../../commands/auth';
 import { gotoCommand } from '../../commands/goto';
 import { resolveCommand } from '../../commands/resolve';
 import { revertCommand } from '../../commands/revert';
-import { snapshotCommand } from '../../commands/snapshot';
 import { syncCommand } from '../../commands/sync';
 import type { CommandContext } from '../../commands/types';
 import type { FxvCommands } from '../../cli/commands';
@@ -141,27 +140,6 @@ function createMockHarness() {
   };
 }
 
-describe('snapshotCommand', () => {
-  it('omits -d if both explicit description and SCM input box are empty', async () => {
-    const harness = createMockHarness();
-    await snapshotCommand(harness.ctx);
-
-    expect(harness.snapshotCalls).toEqual([undefined]);
-    expect(harness.refreshes.length).toBe(1);
-  });
-
-  it('uses SCM input box if present and clears it upon success', async () => {
-    const harness = createMockHarness();
-    harness.inputBox.value = 'WIP work';
-
-    await snapshotCommand(harness.ctx);
-
-    expect(harness.snapshotCalls).toEqual(['WIP work']);
-    expect(harness.inputBox.value).toBe('');
-    expect(harness.refreshes.length).toBe(1);
-  });
-});
-
 describe('syncCommand', () => {
   it('runs sync and refreshes status', async () => {
     const harness = createMockHarness();
@@ -169,6 +147,27 @@ describe('syncCommand', () => {
 
     expect(harness.syncCalls).toEqual(['main.12']);
     expect(harness.refreshes.length).toBe(1);
+  });
+
+  it('handles exit 99 lock contention', async () => {
+    const harness = createMockHarness();
+    vi.spyOn(harness.ctx.fxv, 'sync').mockResolvedValue({
+      ok: false,
+      failure: 'error-envelope',
+      message: "Workspace is locked by another process (PID: 1234, Command: 'fxv.exe').",
+      exitCode: 99,
+      exitClass: 'locked',
+      raw: '',
+    });
+
+    const warnSpy = vi.spyOn(vscode.window, 'showWarningMessage');
+    await syncCommand(harness.ctx);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('locked by fxv (PID 1234)'),
+      'Retry',
+      'Show Log',
+    );
   });
 });
 
@@ -216,6 +215,17 @@ describe('revertCommand', () => {
     expect(harness.revertCalls).toEqual([{ all: true }]);
     expect(harness.refreshes.length).toBe(1);
   });
+
+  it('does not revert all when resource target cannot be resolved', async () => {
+    const harness = createMockHarness();
+    const errorSpy = vi.spyOn(vscode.window, 'showErrorMessage');
+
+    // Passing an unrecognized resource object
+    await revertCommand(harness.ctx, {} as unknown as FlexVaultResourceState);
+
+    expect(harness.revertCalls.length).toBe(0);
+    expect(errorSpy).toHaveBeenCalledWith('Unable to determine files to revert.');
+  });
 });
 
 describe('resolveCommand', () => {
@@ -241,6 +251,16 @@ describe('resolveCommand', () => {
     expect(harness.resolveCalls).toEqual([
       { strategy: 'theirs', target: { paths: ['conflict.txt'] } },
     ]);
+  });
+
+  it('does not resolve all when targeted resource cannot be resolved', async () => {
+    const harness = createMockHarness();
+    const errorSpy = vi.spyOn(vscode.window, 'showErrorMessage');
+
+    await resolveCommand(harness.ctx, 'mine', {} as unknown as FlexVaultResourceState);
+
+    expect(harness.resolveCalls.length).toBe(0);
+    expect(errorSpy).toHaveBeenCalledWith('Unable to determine files to resolve.');
   });
 });
 

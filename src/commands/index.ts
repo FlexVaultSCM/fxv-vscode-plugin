@@ -5,7 +5,6 @@ import { gotoCommand } from './goto';
 import { publishCommand } from './publish';
 import { resolveCommand } from './resolve';
 import { revertCommand } from './revert';
-import { snapshotCommand } from './snapshot';
 import { syncCommand } from './sync';
 import type { CommandContext } from './types';
 
@@ -15,19 +14,18 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
   const disposables: vscode.Disposable[] = [];
 
   disposables.push(
-    vscode.commands.registerCommand('flexvault.snapshot', async (desc?: string) => {
-      await snapshotCommand(ctxProvider(), desc);
-    }),
-
-    vscode.commands.registerCommand('flexvault.publish', async (desc?: string) => {
+    vscode.commands.registerCommand('flexvault.publish', async (...args: unknown[]) => {
+      const desc = typeof args[0] === 'string' ? args[0] : undefined;
       await publishCommand(ctxProvider(), desc);
     }),
 
-    vscode.commands.registerCommand('flexvault.sync', async (spec?: string) => {
+    vscode.commands.registerCommand('flexvault.sync', async (...args: unknown[]) => {
+      const spec = typeof args[0] === 'string' ? args[0] : undefined;
       await syncCommand(ctxProvider(), spec);
     }),
 
-    vscode.commands.registerCommand('flexvault.goto', async (spec?: string) => {
+    vscode.commands.registerCommand('flexvault.goto', async (...args: unknown[]) => {
+      const spec = typeof args[0] === 'string' ? args[0] : undefined;
       await gotoCommand(ctxProvider(), spec);
     }),
 
