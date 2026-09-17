@@ -1,6 +1,6 @@
 import type { ChangeKind, ConflictState, FileStatus, StatusPayload } from '../cli/types.generated';
 
-export type ResourceGroupType = 'conflicts' | 'unpublished' | 'workspace';
+export type ResourceGroupType = 'conflicts' | 'changes';
 
 export type ThemeColorId =
   | 'gitDecoration.addedResourceForeground'
@@ -23,8 +23,7 @@ export interface ResourceDescriptor {
 
 export interface ResourceGroupsDescriptor {
   readonly conflicts: ResourceDescriptor[];
-  readonly unpublished: ResourceDescriptor[];
-  readonly workspace: ResourceDescriptor[];
+  readonly changes: ResourceDescriptor[];
   readonly conflictCount: number;
 }
 
@@ -84,13 +83,12 @@ export function getChangeKindThemeColorId(kind: ChangeKind): ThemeColorId {
 export const CONFLICT_THEME_COLOR_ID: ThemeColorId = 'gitDecoration.conflictingResourceForeground';
 
 /**
- * Pure function to map a StatusPayload to the 3 SCM resource groups without deduplication.
+ * Maps a StatusPayload to Conflicts and a single unified Changes resource group.
  * Runs in unit tests without the VS Code runtime.
  */
 export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceGroupsDescriptor {
   const conflicts: ResourceDescriptor[] = [];
-  const unpublished: ResourceDescriptor[] = [];
-  const workspace: ResourceDescriptor[] = [];
+  const changes: ResourceDescriptor[] = [];
 
   let conflictCount = 0;
 
@@ -113,32 +111,20 @@ export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceG
       });
     }
 
-    if (file.unpublished_state) {
-      const isDeleted = file.unpublished_state === 'deleted';
-      unpublished.push({
+    // Collapse workspace and unpublished into a single Changes entry per file,
+    // prioritizing workspace_state since it represents latest disk modifications.
+    const effectiveChange = file.workspace_state ?? file.unpublished_state;
+    if (effectiveChange) {
+      const isDeleted = effectiveChange === 'deleted';
+      changes.push({
         path: file.path,
-        group: 'unpublished',
-        badge: getChangeKindBadge(file.unpublished_state),
-        tooltip: `Unpublished: ${getChangeKindTooltip(file.unpublished_state)}`,
+        group: 'changes',
+        badge: getChangeKindBadge(effectiveChange),
+        tooltip: getChangeKindTooltip(effectiveChange),
         strikeThrough: isDeleted,
         isDeleted,
-        themeColorId: getChangeKindThemeColorId(file.unpublished_state),
-        changeKind: file.unpublished_state,
-        file,
-      });
-    }
-
-    if (file.workspace_state) {
-      const isDeleted = file.workspace_state === 'deleted';
-      workspace.push({
-        path: file.path,
-        group: 'workspace',
-        badge: getChangeKindBadge(file.workspace_state),
-        tooltip: `Workspace: ${getChangeKindTooltip(file.workspace_state)}`,
-        strikeThrough: isDeleted,
-        isDeleted,
-        themeColorId: getChangeKindThemeColorId(file.workspace_state),
-        changeKind: file.workspace_state,
+        themeColorId: getChangeKindThemeColorId(effectiveChange),
+        changeKind: effectiveChange,
         file,
       });
     }
@@ -146,8 +132,7 @@ export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceG
 
   return {
     conflicts,
-    unpublished,
-    workspace,
+    changes,
     conflictCount,
   };
 }

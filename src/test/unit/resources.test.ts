@@ -9,7 +9,7 @@ import {
 } from '../../scm/resources';
 
 describe('SCM Resources Mapping', () => {
-  it('maps conflicts, unpublished, and workspace groups with fan-out and no deduplication', () => {
+  it('maps conflicts and collapses into a single unified Changes group', () => {
     const status: StatusPayload = {
       current_branch: 'main',
       head_commit: {
@@ -33,7 +33,7 @@ describe('SCM Resources Mapping', () => {
         {
           // File with changes on both unpublished and workspace axes
           path: 'both_axes.txt',
-          unpublished_state: 'modified',
+          unpublished_state: 'added',
           workspace_state: 'modified',
         },
         {
@@ -69,22 +69,15 @@ describe('SCM Resources Mapping', () => {
     expect(result.conflicts[0]!.tooltip).toBe('Conflict: Both sides changed the file content');
     expect(result.conflictCount).toBe(1);
 
-    // Unpublished group
-    expect(result.unpublished).toHaveLength(3);
-    const unpublishedPaths = result.unpublished.map((r) => r.path);
-    expect(unpublishedPaths).toContain('both_axes.txt');
-    expect(unpublishedPaths).toContain('unpub.txt');
-    expect(unpublishedPaths).toContain('conflict.txt');
+    // Single unified Changes group: exactly 4 files
+    expect(result.changes).toHaveLength(4);
+    const changePaths = result.changes.map((r) => r.path);
+    expect(changePaths).toEqual(['both_axes.txt', 'unpub.txt', 'work.txt', 'conflict.txt']);
 
-    // Workspace group
-    expect(result.workspace).toHaveLength(2);
-    const workspacePaths = result.workspace.map((r) => r.path);
-    expect(workspacePaths).toContain('both_axes.txt');
-    expect(workspacePaths).toContain('work.txt');
-
-    // Crucial check: both_axes.txt is present in BOTH groups (no deduplication)
-    expect(unpublishedPaths).toContain('both_axes.txt');
-    expect(workspacePaths).toContain('both_axes.txt');
+    // Workspace modification takes priority over unpublished state
+    const bothAxes = result.changes.find((r) => r.path === 'both_axes.txt')!;
+    expect(bothAxes.badge).toBe('M');
+    expect(bothAxes.tooltip).toBe('Modified');
   });
 
   it('handles a conflicted path with neither change axis (e.g. directory clash)', () => {
@@ -120,12 +113,11 @@ describe('SCM Resources Mapping', () => {
       'Conflict: One side has a file where the other has a directory',
     );
 
-    // gamma_dir is NOT in Unpublished or Workspace
-    expect(result.unpublished.map((r) => r.path)).not.toContain('gamma_dir');
-    expect(result.workspace.map((r) => r.path)).not.toContain('gamma_dir');
+    // gamma_dir has no change axis, so it is NOT in Changes
+    expect(result.changes.map((r) => r.path)).not.toContain('gamma_dir');
 
-    // inner.txt is in Unpublished
-    expect(result.unpublished.map((r) => r.path)).toContain('gamma_dir/inner.txt');
+    // inner.txt is in Changes
+    expect(result.changes.map((r) => r.path)).toContain('gamma_dir/inner.txt');
   });
 
   it('formats conflict details for all three kinds', () => {
@@ -168,8 +160,8 @@ describe('SCM Resources Mapping', () => {
     };
 
     const result = mapStatusToResourceDescriptors(status);
-    const removed = result.workspace.find((r) => r.path === 'removed.txt')!;
-    const kept = result.workspace.find((r) => r.path === 'kept.txt')!;
+    const removed = result.changes.find((r) => r.path === 'removed.txt')!;
+    const kept = result.changes.find((r) => r.path === 'kept.txt')!;
 
     expect(removed.strikeThrough).toBe(true);
     expect(removed.isDeleted).toBe(true);

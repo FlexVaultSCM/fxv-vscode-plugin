@@ -27,20 +27,12 @@ export function computeFileDecorationData(file: FileStatus): FileDecorationData 
     };
   }
 
-  if (file.workspace_state) {
+  const effectiveChange = file.workspace_state ?? file.unpublished_state;
+  if (effectiveChange) {
     return {
-      badge: getChangeKindBadge(file.workspace_state),
-      tooltip: `Workspace: ${getChangeKindTooltip(file.workspace_state)}`,
-      color: new vscode.ThemeColor(getChangeKindThemeColorId(file.workspace_state)),
-      propagate: true,
-    };
-  }
-
-  if (file.unpublished_state) {
-    return {
-      badge: getChangeKindBadge(file.unpublished_state),
-      tooltip: `Unpublished: ${getChangeKindTooltip(file.unpublished_state)}`,
-      color: new vscode.ThemeColor(getChangeKindThemeColorId(file.unpublished_state)),
+      badge: getChangeKindBadge(effectiveChange),
+      tooltip: getChangeKindTooltip(effectiveChange),
+      color: new vscode.ThemeColor(getChangeKindThemeColorId(effectiveChange)),
       propagate: true,
     };
   }
