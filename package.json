@@ -64,8 +64,28 @@
         "command": "flexvault.reportFeedback",
         "title": "Feedback & Support on Discord",
         "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.refresh",
+        "title": "Refresh",
+        "category": "FlexVault",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "flexvault.publish",
+        "title": "Publish",
+        "category": "FlexVault"
       }
     ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "flexvault.refresh",
+          "group": "navigation",
+          "when": "flexvault.enabled"
+        }
+      ]
+    },
     "configuration": {
       "title": "FlexVault",
       "properties": {
@@ -88,6 +108,28 @@
           "minimum": 0,
           "scope": "window",
           "markdownDescription": "How long to wait for a command that changes the workspace, such as `sync` or `goto`. The command is never stopped: FlexVault gives up waiting and reports it, because stopping a write partway leaves the workspace inconsistent. `0` waits indefinitely."
+        },
+        "flexvault.refreshDebounceMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 0,
+          "scope": "window",
+          "markdownDescription": "Debounce delay in milliseconds before refreshing workspace status after file changes. `0` disables debouncing."
+        },
+        "flexvault.watchEnabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Whether to watch the workspace for file changes and refresh status automatically."
+        },
+        "flexvault.watchExclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "markdownDescription": "Extra glob patterns excluded from the FlexVault file watcher."
         },
         "flexvault.logLevel": {
           "type": "string",

@@ -233,6 +233,9 @@ export interface StatusPayload {
   current_user?: string;
   head_commit: HeadCommit;
   sync_status?: SyncStatus;
+  /**
+   * The changed files, in path order. An entry with only a conflict_state is a path in conflict that neither change axis reports, such as the directory in a file/directory clash.
+   */
   files: FileStatus[];
   file_change_counts: FileChangeCounts;
 }
@@ -298,18 +301,24 @@ export interface FileStatus {
   path: string;
   unpublished_state?: ChangeKind;
   workspace_state?: ChangeKind1;
-  /**
-   * Conflict details for the file if a conflict exists; present only when the file has a conflict.
-   */
-  conflict_state?: {};
+  conflict_state?: ConflictState;
   /**
    * File size in bytes, if available.
    */
   size?: number | null;
 }
+/**
+ * Why the file is in conflict. Present only when the file is itself in conflict, so a directory that merely contains conflicts is not reported.
+ */
+export interface ConflictState {
+  /**
+   * The cause of the conflict. 'content' means both sides changed the file content. 'deleted' means one side deleted the path and the other changed it. 'type_change' means one side has a file where the other has a directory.
+   */
+  kind: 'content' | 'deleted' | 'type_change';
+}
 export interface FileChangeCounts {
   /**
-   * Total number of changed files.
+   * Total number of entries in files, including conflicted paths that carry neither change axis.
    */
   total: number;
   /**
