@@ -67,7 +67,7 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     this.conflictsGroup.hideWhenEmpty = true;
 
     this.unpublishedGroup = this.scm.createResourceGroup('unpublished', 'Unpublished');
-    this.unpublishedGroup.hideWhenEmpty = false;
+    this.unpublishedGroup.hideWhenEmpty = true;
 
     this.workspaceGroup = this.scm.createResourceGroup('workspace', 'Pending Snapshot');
     this.workspaceGroup.hideWhenEmpty = false;
@@ -84,6 +84,10 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     if (this.statusCache.status) {
       this.onStatusChanged(this.statusCache.status);
     }
+  }
+
+  get inputBox(): vscode.SourceControlInputBox {
+    return this.scm.inputBox;
   }
 
   setBusy(busy: boolean): void {
