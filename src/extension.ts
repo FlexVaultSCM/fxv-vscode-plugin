@@ -1,7 +1,9 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { FxvCommands } from './cli/commands';
 import { CliDiscovery } from './cli/discovery';
+import { describeLockHolder, parseLockHolder } from './cli/lockErrors';
 import { CliRunner } from './cli/runner';
 import { VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
@@ -60,11 +62,8 @@ export function activate(context: vscode.ExtensionContext): void {
       d.dispose();
     }
     rootSubscriptions = [];
-    scmProvider?.dispose();
     scmProvider = undefined;
-    statusCache?.dispose();
     statusCache = undefined;
-    decorationProvider?.dispose();
     decorationProvider = undefined;
   };
 
@@ -79,6 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }
 
     void contextKeys.setEnabled(true);
+    void contextKeys.setCliIncompatible(versionGuard.blocked);
     const rootUri = vscode.Uri.file(primary.path);
 
     decorationProvider = new FlexVaultDecorationProvider();
@@ -92,22 +92,40 @@ export function activate(context: vscode.ExtensionContext): void {
       onInterrupted: () => {
         void contextKeys.setInterrupted(true);
       },
+      onLockContention: (msg) => {
+        const holder = parseLockHolder(msg);
+        const description = describeLockHolder(holder);
+        void vscode.window
+          .showWarningMessage(`Workspace is locked by ${description}.`, 'Retry', 'Show Log')
+          .then((action) => {
+            if (action === 'Retry') {
+              void statusCache?.refresh({ skipRemoteUpdate: false });
+            } else if (action === 'Show Log') {
+              log?.show();
+            }
+          });
+      },
     });
+    rootSubscriptions.push(statusCache);
 
     rootSubscriptions.push(
       statusCache.onDidChangeStatus((status) => {
         decorationProvider?.update(status, rootUri);
+        void contextKeys.updateFromStatus(status);
       }),
     );
 
-    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, contextKeys, log);
+    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, log);
     rootSubscriptions.push(scmProvider);
 
     // Document and file hooks triggering debounced lock-free status refresh
     rootSubscriptions.push(
       vscode.workspace.onDidSaveTextDocument((doc) => {
-        if (doc.uri.fsPath.toLowerCase().startsWith(primary.path.toLowerCase())) {
-          statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+        if (doc.uri.scheme === 'file') {
+          const rel = path.relative(primary.path, doc.uri.fsPath);
+          if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+            statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+          }
         }
       }),
       vscode.workspace.onDidCreateFiles(() => {
@@ -150,6 +168,14 @@ export function activate(context: vscode.ExtensionContext): void {
       if (event.affectsConfiguration('flexvault.cliPath')) {
         discovery.invalidate();
         versionGuard.reset();
+        void contextKeys.setCliIncompatible(versionGuard.blocked);
+      }
+      if (
+        event.affectsConfiguration('flexvault.watchEnabled') ||
+        event.affectsConfiguration('flexvault.watchExclude') ||
+        event.affectsConfiguration('files.watcherExclude')
+      ) {
+        statusCache?.updateConfiguration();
       }
     }),
   );

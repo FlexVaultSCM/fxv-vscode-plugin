@@ -59,9 +59,6 @@ export class IgnoreFilter {
   }
 }
 
-/**
- * Converts a glob-like pattern into a regular expression.
- */
 export function patternToRegExp(pattern: string): RegExp {
   let p = pattern.trim().replace(/\\/g, '/');
 
@@ -69,17 +66,18 @@ export function patternToRegExp(pattern: string): RegExp {
     return /(?!)/;
   }
 
-  // Determine prefix: rooted (/), double-star (**/), or unrooted
-  let prefix = '(?:^|.*?/)';
-  if (p.startsWith('**/')) {
-    prefix = '(?:^|.*?/)';
-    p = p.slice(3);
-  } else if (p.startsWith('/')) {
+  // Determine prefix: rooted (at workspace root), wildcard path, or anywhere
+  let prefix = '^(?:^|.*?/)';
+  let isDoubleStarPrefix = false;
+  if (p.startsWith('/')) {
     prefix = '^';
     p = p.slice(1);
+  } else if (p.startsWith('**/')) {
+    isDoubleStarPrefix = true;
+    p = p.slice(3);
   }
 
-  // Determine suffix: double-star (/**), directory (/), or file pattern
+  // Determine suffix: recursive directory match or exact match
   let suffix = '$';
   if (p.endsWith('/**')) {
     suffix = '(?:/.*|$)';
@@ -87,17 +85,23 @@ export function patternToRegExp(pattern: string): RegExp {
   } else if (p.endsWith('/')) {
     suffix = '(?:/.*|$)';
     p = p.slice(0, -1);
-  } else if (!p.includes('.')) {
-    // A pattern without an extension like 'build' or 'dist' can match directory or file
+  } else if (!p.includes('/') && !p.includes('*') && !p.includes('?')) {
+    // A single component name like '.venv', 'build', or 'dist' can match a directory or file
     suffix = '(?:/.*|$)';
+  }
+
+  // If the pattern contains an internal slash and was not explicitly prefixed with **/, it is rooted
+  if (!isDoubleStarPrefix && prefix !== '^' && p.includes('/')) {
+    prefix = '^';
   }
 
   // Escape special regex characters in the remaining pattern segments
   const escaped = p
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\/\*\*\//g, '(?:/|/.*?/)')
+    .replace(/\*\*/g, '.*')
     .replace(/\*/g, '[^/]*')
     .replace(/\?/g, '[^/]');
 
-  return new RegExp(`^${prefix}${escaped}${suffix}`);
+  return new RegExp(`${prefix}${escaped}${suffix}`);
 }

@@ -71,11 +71,15 @@ describe('ContextKeys', () => {
       },
     };
 
+    await contextKeys.setInterrupted(true);
+    expect(keys['flexvault.interrupted']).toBe(true);
+
     await contextKeys.updateFromStatus(status);
 
     expect(keys['flexvault.loggedIn']).toBe(true);
     expect(keys['flexvault.hasConflicts']).toBe(true);
     expect(keys['flexvault.headState']).toBe('parented_draft');
+    expect(keys['flexvault.interrupted']).toBe(false);
   });
 
   it('derives context keys when logged out and conflict-free', async () => {

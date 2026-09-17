@@ -16,6 +16,7 @@ export interface StatusCacheOptions {
   readonly getWatchExclude: () => string[];
   readonly log?: Logger | undefined;
   readonly onInterrupted?: ((error: ErrorPayload) => void) | undefined;
+  readonly onLockContention?: ((message: string) => void) | undefined;
 }
 
 /**
@@ -28,6 +29,7 @@ export class StatusCache implements vscode.Disposable {
   private currentStatus: StatusPayload | undefined;
   private readonly coordinator: StatusCoordinator;
   private watcher: vscode.FileSystemWatcher | null = null;
+  private watcherDisposables: vscode.Disposable[] = [];
   private ignoreFilter: IgnoreFilter;
   private disposables: vscode.Disposable[] = [];
 
@@ -66,6 +68,11 @@ export class StatusCache implements vscode.Disposable {
     return this.coordinator.refresh(opts);
   }
 
+  updateConfiguration(): void {
+    this.reloadIgnoreFilter();
+    this.setupWatcher();
+  }
+
   private async executeStatus(skipRemoteUpdate: boolean): Promise<StatusPayload | undefined> {
     this.options.log?.debug(`Executing status (skipRemoteUpdate: ${skipRemoteUpdate})...`);
 
@@ -79,6 +86,9 @@ export class StatusCache implements vscode.Disposable {
           ...(result.errorData ? { error_data: result.errorData } : {}),
         };
         this.options.onInterrupted?.(errorPayload);
+      } else if (result.exitCode === 99) {
+        this.options.log?.error(`Workspace lock contention during status: ${result.message}`);
+        this.options.onLockContention?.(result.message);
       } else {
         this.options.log?.error(`Status refresh failed: ${result.message}`);
       }
@@ -111,6 +121,8 @@ export class StatusCache implements vscode.Disposable {
   }
 
   private setupWatcher(): void {
+    this.teardownWatcher();
+
     if (!this.options.isWatchEnabled()) {
       return;
     }
@@ -130,7 +142,7 @@ export class StatusCache implements vscode.Disposable {
       }
     };
 
-    this.disposables.push(
+    this.watcherDisposables.push(
       this.watcher.onDidCreate(onFileEvent),
       this.watcher.onDidChange(onFileEvent),
       this.watcher.onDidDelete(onFileEvent),
@@ -138,10 +150,17 @@ export class StatusCache implements vscode.Disposable {
     );
   }
 
+  private teardownWatcher(): void {
+    for (const d of this.watcherDisposables) {
+      d.dispose();
+    }
+    this.watcherDisposables = [];
+    this.watcher = null;
+  }
+
   dispose(): void {
     this.coordinator.dispose();
-    this.watcher?.dispose();
-    this.watcher = null;
+    this.teardownWatcher();
     for (const d of this.disposables) {
       d.dispose();
     }

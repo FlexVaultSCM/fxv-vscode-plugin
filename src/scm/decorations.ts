@@ -40,6 +40,8 @@ export function computeFileDecorationData(file: FileStatus): FileDecorationData 
   return undefined;
 }
 
+const isCaseInsensitive = process.platform === 'win32' || process.platform === 'darwin';
+
 /**
  * Provides file decorations for the Explorer and SCM views.
  */
@@ -65,7 +67,8 @@ export class FlexVaultDecorationProvider
           const dec = new vscode.FileDecoration(data.badge, data.tooltip, data.color);
           dec.propagate = data.propagate;
           const normalized = file.path.replace(/\\/g, '/');
-          this.decorationsByPath.set(normalized, dec);
+          const key = isCaseInsensitive ? normalized.toLowerCase() : normalized;
+          this.decorationsByPath.set(key, dec);
         }
       }
     }
@@ -74,21 +77,17 @@ export class FlexVaultDecorationProvider
   }
 
   provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
-    if (!this.rootPath) {
+    if (!this.rootPath || uri.scheme !== 'file') {
       return undefined;
     }
 
-    const fileFsPath = uri.fsPath;
-    if (!fileFsPath.toLowerCase().startsWith(this.rootPath.toLowerCase())) {
+    const rel = path.relative(this.rootPath, uri.fsPath).replace(/\\/g, '/');
+    if (!rel || rel === '.' || rel.startsWith('..') || path.isAbsolute(rel)) {
       return undefined;
     }
 
-    const rel = path.relative(this.rootPath, fileFsPath).replace(/\\/g, '/');
-    if (!rel || rel === '.') {
-      return undefined;
-    }
-
-    return this.decorationsByPath.get(rel);
+    const key = isCaseInsensitive ? rel.toLowerCase() : rel;
+    return this.decorationsByPath.get(key);
   }
 
   dispose(): void {

@@ -78,7 +78,7 @@ describe('StatusCoordinator', () => {
           resolveFirst = resolve;
         });
       }
-      return Promise.resolve(dummyStatus());
+      return Promise.resolve(dummyStatus('second'));
     };
 
     const coordinator = new StatusCoordinator(fetcher, () => 0);
@@ -97,14 +97,17 @@ describe('StatusCoordinator', () => {
     expect(calls).toHaveLength(1);
 
     // Complete the first call
-    resolveFirst!(dummyStatus());
-    await p1;
-    await p2;
-    await p3;
+    resolveFirst!(dummyStatus('first'));
+    const r1 = await p1;
+    const r2 = await p2;
+    const r3 = await p3;
 
     // The queued calls should have coalesced into exactly ONE subsequent call
     // and that subsequent call MUST have skipRemoteUpdate: false
     expect(calls).toEqual([true, false]);
+    expect(r1?.current_branch).toBe('first');
+    expect(r2?.current_branch).toBe('second');
+    expect(r3?.current_branch).toBe('second');
 
     coordinator.dispose();
   });

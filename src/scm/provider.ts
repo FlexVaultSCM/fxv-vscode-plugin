@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 
 import type { StatusPayload } from '../cli/types.generated';
 import type { Logger } from '../cli/logger';
-import type { ContextKeys } from '../state/contextKeys';
 import type { StatusCache } from '../state/statusCache';
 import { mapStatusToResourceDescriptors, type ResourceDescriptor } from './resources';
 
@@ -14,7 +13,8 @@ export function createSourceControlResourceState(
   descriptor: ResourceDescriptor,
   rootUri: vscode.Uri,
 ): FlexVaultResourceState {
-  const uri = vscode.Uri.joinPath(rootUri, ...descriptor.path.split('/'));
+  const normalized = descriptor.path.replace(/\\/g, '/');
+  const uri = vscode.Uri.joinPath(rootUri, ...normalized.split('/'));
 
   const decorations: vscode.SourceControlResourceDecorations = {
     strikeThrough: descriptor.strikeThrough,
@@ -45,13 +45,13 @@ export function createSourceControlResourceState(
 export class FlexVaultScmProvider implements vscode.Disposable {
   private readonly scm: vscode.SourceControl;
   private readonly conflictsGroup: vscode.SourceControlResourceGroup;
-  private readonly changesGroup: vscode.SourceControlResourceGroup;
+  private readonly unpublishedGroup: vscode.SourceControlResourceGroup;
+  private readonly workspaceGroup: vscode.SourceControlResourceGroup;
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(
     private readonly rootUri: vscode.Uri,
     private readonly statusCache: StatusCache,
-    private readonly contextKeys: ContextKeys,
     private readonly log?: Logger,
   ) {
     this.scm = vscode.scm.createSourceControl('flexvault', 'FlexVault', rootUri);
@@ -66,13 +66,17 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     this.conflictsGroup = this.scm.createResourceGroup('conflicts', 'Conflicts');
     this.conflictsGroup.hideWhenEmpty = true;
 
-    this.changesGroup = this.scm.createResourceGroup('changes', 'Changes');
-    this.changesGroup.hideWhenEmpty = false;
+    this.unpublishedGroup = this.scm.createResourceGroup('unpublished', 'Unpublished');
+    this.unpublishedGroup.hideWhenEmpty = false;
+
+    this.workspaceGroup = this.scm.createResourceGroup('workspace', 'Pending Snapshot');
+    this.workspaceGroup.hideWhenEmpty = false;
 
     this.disposables.push(
       this.scm,
       this.conflictsGroup,
-      this.changesGroup,
+      this.unpublishedGroup,
+      this.workspaceGroup,
       this.statusCache.onDidChangeStatus((status) => this.onStatusChanged(status)),
     );
 
@@ -89,9 +93,9 @@ export class FlexVaultScmProvider implements vscode.Disposable {
   private onStatusChanged(status: StatusPayload | undefined): void {
     if (!status) {
       this.conflictsGroup.resourceStates = [];
-      this.changesGroup.resourceStates = [];
+      this.unpublishedGroup.resourceStates = [];
+      this.workspaceGroup.resourceStates = [];
       this.scm.count = 0;
-      void this.contextKeys.updateFromStatus(undefined);
       return;
     }
 
@@ -99,14 +103,16 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     this.conflictsGroup.resourceStates = desc.conflicts.map((d) =>
       createSourceControlResourceState(d, this.rootUri),
     );
-    this.changesGroup.resourceStates = desc.changes.map((d) =>
+    this.unpublishedGroup.resourceStates = desc.unpublished.map((d) =>
+      createSourceControlResourceState(d, this.rootUri),
+    );
+    this.workspaceGroup.resourceStates = desc.workspace.map((d) =>
       createSourceControlResourceState(d, this.rootUri),
     );
     this.scm.count = status.file_change_counts.total;
 
-    void this.contextKeys.updateFromStatus(status);
     this.log?.debug(
-      `SCM updated: ${desc.conflicts.length} conflicts, ${desc.changes.length} changes.`,
+      `SCM updated: ${desc.conflicts.length} conflicts, ${desc.unpublished.length} unpublished, ${desc.workspace.length} pending snapshot.`,
     );
   }
 

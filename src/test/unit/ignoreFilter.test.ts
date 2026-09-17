@@ -58,6 +58,17 @@ docs/*.md
     expect(filter.isIgnored('src/index.ts')).toBe(false);
   });
 
+  it('ignores dotted directories and respects wildcard boundaries', () => {
+    const filter = new IgnoreFilter('.venv\n.cache\nfoo/*');
+
+    expect(filter.isIgnored('.venv/foo.py')).toBe(true);
+    expect(filter.isIgnored('.venv/sub/bar.py')).toBe(true);
+    expect(filter.isIgnored('.cache/data.bin')).toBe(true);
+
+    expect(filter.isIgnored('foo/direct.txt')).toBe(true);
+    expect(filter.isIgnored('foo/nested/deep.txt')).toBe(false);
+  });
+
   it('allows normal workspace files to pass', () => {
     const filter = new IgnoreFilter('*.log\nnode_modules/');
 

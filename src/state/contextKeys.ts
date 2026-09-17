@@ -7,36 +7,46 @@ export type SetContextFn = (key: string, value: unknown) => Thenable<unknown> | 
  * Keeps context key names and value types in one place.
  */
 export class ContextKeys {
+  private readonly cache = new Map<string, unknown>();
+
   constructor(private readonly setContext: SetContextFn) {}
 
+  private async updateKey(key: string, value: unknown): Promise<void> {
+    if (this.cache.has(key) && this.cache.get(key) === value) {
+      return;
+    }
+    this.cache.set(key, value);
+    await this.setContext(key, value);
+  }
+
   async setEnabled(enabled: boolean): Promise<void> {
-    await this.setContext('flexvault.enabled', enabled);
+    await this.updateKey('flexvault.enabled', enabled);
   }
 
   async setLoggedIn(loggedIn: boolean): Promise<void> {
-    await this.setContext('flexvault.loggedIn', loggedIn);
+    await this.updateKey('flexvault.loggedIn', loggedIn);
   }
 
   async setHasConflicts(hasConflicts: boolean): Promise<void> {
-    await this.setContext('flexvault.hasConflicts', hasConflicts);
+    await this.updateKey('flexvault.hasConflicts', hasConflicts);
   }
 
   async setBusy(busy: boolean): Promise<void> {
-    await this.setContext('flexvault.busy', busy);
+    await this.updateKey('flexvault.busy', busy);
   }
 
   async setInterrupted(interrupted: boolean): Promise<void> {
-    await this.setContext('flexvault.interrupted', interrupted);
+    await this.updateKey('flexvault.interrupted', interrupted);
   }
 
   async setHeadState(
     headState: 'empty_branch' | 'unparented_draft' | 'parented_draft' | undefined,
   ): Promise<void> {
-    await this.setContext('flexvault.headState', headState);
+    await this.updateKey('flexvault.headState', headState);
   }
 
   async setCliIncompatible(incompatible: boolean): Promise<void> {
-    await this.setContext('flexvault.cliIncompatible', incompatible);
+    await this.updateKey('flexvault.cliIncompatible', incompatible);
   }
 
   /**
@@ -60,5 +70,6 @@ export class ContextKeys {
     await this.setLoggedIn(loggedIn);
     await this.setHasConflicts(hasConflicts);
     await this.setHeadState(headState);
+    await this.setInterrupted(false);
   }
 }

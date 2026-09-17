@@ -1,6 +1,6 @@
 import type { ChangeKind, ConflictState, FileStatus, StatusPayload } from '../cli/types.generated';
 
-export type ResourceGroupType = 'conflicts' | 'changes';
+export type ResourceGroupType = 'conflicts' | 'unpublished' | 'workspace';
 
 export type ThemeColorId =
   | 'gitDecoration.addedResourceForeground'
@@ -23,7 +23,8 @@ export interface ResourceDescriptor {
 
 export interface ResourceGroupsDescriptor {
   readonly conflicts: ResourceDescriptor[];
-  readonly changes: ResourceDescriptor[];
+  readonly unpublished: ResourceDescriptor[];
+  readonly workspace: ResourceDescriptor[];
   readonly conflictCount: number;
 }
 
@@ -83,12 +84,14 @@ export function getChangeKindThemeColorId(kind: ChangeKind): ThemeColorId {
 export const CONFLICT_THEME_COLOR_ID: ThemeColorId = 'gitDecoration.conflictingResourceForeground';
 
 /**
- * Maps a StatusPayload to Conflicts and a single unified Changes resource group.
+ * Maps a StatusPayload to Conflicts, Unpublished, and Workspace resource groups.
+ * Fan-out across axes without deduplication per PLAN.md 3.2.
  * Runs in unit tests without the VS Code runtime.
  */
 export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceGroupsDescriptor {
   const conflicts: ResourceDescriptor[] = [];
-  const changes: ResourceDescriptor[] = [];
+  const unpublished: ResourceDescriptor[] = [];
+  const workspace: ResourceDescriptor[] = [];
 
   let conflictCount = 0;
 
@@ -111,20 +114,32 @@ export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceG
       });
     }
 
-    // Collapse workspace and unpublished into a single Changes entry per file,
-    // prioritizing workspace_state since it represents latest disk modifications.
-    const effectiveChange = file.workspace_state ?? file.unpublished_state;
-    if (effectiveChange) {
-      const isDeleted = effectiveChange === 'deleted';
-      changes.push({
+    if (file.unpublished_state) {
+      const isDeleted = file.unpublished_state === 'deleted';
+      unpublished.push({
         path: file.path,
-        group: 'changes',
-        badge: getChangeKindBadge(effectiveChange),
-        tooltip: getChangeKindTooltip(effectiveChange),
+        group: 'unpublished',
+        badge: getChangeKindBadge(file.unpublished_state),
+        tooltip: `Unpublished: ${getChangeKindTooltip(file.unpublished_state)}`,
         strikeThrough: isDeleted,
         isDeleted,
-        themeColorId: getChangeKindThemeColorId(effectiveChange),
-        changeKind: effectiveChange,
+        themeColorId: getChangeKindThemeColorId(file.unpublished_state),
+        changeKind: file.unpublished_state,
+        file,
+      });
+    }
+
+    if (file.workspace_state) {
+      const isDeleted = file.workspace_state === 'deleted';
+      workspace.push({
+        path: file.path,
+        group: 'workspace',
+        badge: getChangeKindBadge(file.workspace_state),
+        tooltip: `Pending Snapshot: ${getChangeKindTooltip(file.workspace_state)}`,
+        strikeThrough: isDeleted,
+        isDeleted,
+        themeColorId: getChangeKindThemeColorId(file.workspace_state),
+        changeKind: file.workspace_state,
         file,
       });
     }
@@ -132,7 +147,8 @@ export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceG
 
   return {
     conflicts,
-    changes,
+    unpublished,
+    workspace,
     conflictCount,
   };
 }
