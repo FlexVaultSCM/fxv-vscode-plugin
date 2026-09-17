@@ -1,11 +1,17 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { FxvCommands } from './cli/commands';
 import { CliDiscovery } from './cli/discovery';
+import { describeLockHolder, parseLockHolder } from './cli/lockErrors';
 import { CliRunner } from './cli/runner';
 import { VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
 import { LINKS, type LinkName } from './links';
+import { FlexVaultDecorationProvider } from './scm/decorations';
+import { FlexVaultScmProvider } from './scm/provider';
+import { ContextKeys } from './state/contextKeys';
+import { StatusCache } from './state/statusCache';
 import { Log } from './ui/log';
 
 const EXTENSION_ID = 'flexvault.flexvault-vscode';
@@ -24,6 +30,15 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const roots = new WorkspaceRoots(log);
   const versionGuard = new VersionGuard();
+  const contextKeys = new ContextKeys((key, value) =>
+    vscode.commands.executeCommand('setContext', key, value),
+  );
+
+  let scmProvider: FlexVaultScmProvider | undefined;
+  let statusCache: StatusCache | undefined;
+  let decorationProvider: FlexVaultDecorationProvider | undefined;
+  let rootSubscriptions: vscode.Disposable[] = [];
+
   const runner = new CliRunner({
     binary: () => discovery.locate().path,
     cwd: () => roots.primary()?.path,
@@ -31,22 +46,117 @@ export function activate(context: vscode.ExtensionContext): void {
     writeTimeoutSeconds: () => numberSetting('writeTimeoutSeconds', 0),
     versionGuard,
     log,
+    onBusyChanged: (busy) => {
+      void contextKeys.setBusy(busy);
+      scmProvider?.setBusy(busy);
+    },
     onPossiblyInterrupted: (reason) => {
-      // Recovery itself arrives with the status cache; until then the log is
-      // the only place this can be said.
       log?.error(`The workspace may be mid-operation: ${reason}. Run fxv status to check.`);
+      void contextKeys.setInterrupted(true);
     },
   });
   const fxv = new FxvCommands(runner);
 
-  reportWorkspaceRoot(roots);
-  void probeWorkspace(fxv, roots);
+  const teardownRoot = () => {
+    for (const d of rootSubscriptions) {
+      d.dispose();
+    }
+    rootSubscriptions = [];
+    scmProvider = undefined;
+    statusCache = undefined;
+    decorationProvider = undefined;
+  };
+
+  const setupRoot = () => {
+    teardownRoot();
+    const primary = roots.primary();
+    reportWorkspaceRoot(roots);
+
+    if (!primary) {
+      void contextKeys.setEnabled(false);
+      return;
+    }
+
+    void contextKeys.setEnabled(true);
+    void contextKeys.setCliIncompatible(versionGuard.blocked);
+    const rootUri = vscode.Uri.file(primary.path);
+
+    decorationProvider = new FlexVaultDecorationProvider();
+    rootSubscriptions.push(vscode.window.registerFileDecorationProvider(decorationProvider));
+
+    statusCache = new StatusCache(fxv, rootUri, {
+      getDebounceMs: () => numberSetting('refreshDebounceMs', 300),
+      isWatchEnabled: () => booleanSetting('watchEnabled', true),
+      getWatchExclude: () => stringArraySetting('watchExclude', []),
+      log,
+      onInterrupted: () => {
+        void contextKeys.setInterrupted(true);
+      },
+      onLockContention: (msg) => {
+        const holder = parseLockHolder(msg);
+        const description = describeLockHolder(holder);
+        void vscode.window
+          .showWarningMessage(`Workspace is locked by ${description}.`, 'Retry', 'Show Log')
+          .then((action) => {
+            if (action === 'Retry') {
+              void statusCache?.refresh({ skipRemoteUpdate: false });
+            } else if (action === 'Show Log') {
+              log?.show();
+            }
+          });
+      },
+    });
+    rootSubscriptions.push(statusCache);
+
+    rootSubscriptions.push(
+      statusCache.onDidChangeStatus((status) => {
+        decorationProvider?.update(status, rootUri);
+        void contextKeys.updateFromStatus(status);
+      }),
+    );
+
+    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, log);
+    rootSubscriptions.push(scmProvider);
+
+    // Document and file hooks triggering debounced lock-free status refresh
+    rootSubscriptions.push(
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (doc.uri.scheme === 'file') {
+          const rel = path.relative(primary.path, doc.uri.fsPath);
+          if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+            statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+          }
+        }
+      }),
+      vscode.workspace.onDidCreateFiles(() => {
+        statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+      }),
+      vscode.workspace.onDidDeleteFiles(() => {
+        statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+      }),
+      vscode.workspace.onDidRenameFiles(() => {
+        statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+      }),
+    );
+
+    // Initial status check
+    void statusCache.refresh({ skipRemoteUpdate: true }).then((status) => {
+      if (status) {
+        const { current_branch: branch, file_change_counts: counts, head_commit: head } = status;
+        log?.info(
+          `On branch ${branch} (${head.state}), ${counts.total} changed ${counts.total === 1 ? 'file' : 'files'}.`,
+        );
+      }
+    });
+  };
+
+  setupRoot();
 
   context.subscriptions.push(
+    { dispose: teardownRoot },
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       roots.invalidate();
-      reportWorkspaceRoot(roots);
-      void probeWorkspace(fxv, roots);
+      setupRoot();
     }),
   );
 
@@ -56,13 +166,16 @@ export function activate(context: vscode.ExtensionContext): void {
         log?.refreshLevel();
       }
       if (event.affectsConfiguration('flexvault.cliPath')) {
-        // A different binary is a different version, so the guard's verdict
-        // goes with it. The rediscovery itself is left to the next caller:
-        // this event fires for every intermediate value the settings editor
-        // writes, and a full PATH scan per keystroke is not worth an eager
-        // log line.
         discovery.invalidate();
         versionGuard.reset();
+        void contextKeys.setCliIncompatible(versionGuard.blocked);
+      }
+      if (
+        event.affectsConfiguration('flexvault.watchEnabled') ||
+        event.affectsConfiguration('flexvault.watchExclude') ||
+        event.affectsConfiguration('files.watcherExclude')
+      ) {
+        statusCache?.updateConfiguration();
       }
     }),
   );
@@ -70,6 +183,15 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('flexvault.showLog', () => {
       log?.show();
+    }),
+    vscode.commands.registerCommand('flexvault.refresh', async () => {
+      if (statusCache) {
+        await statusCache.refresh({ skipRemoteUpdate: false });
+      }
+    }),
+    vscode.commands.registerCommand('flexvault.publish', async () => {
+      // Phase 4 will implement the full publish flow.
+      vscode.window.showInformationMessage('FlexVault publish will be available in Phase 4.');
     }),
     vscode.commands.registerCommand('flexvault.openDocumentation', () => openLink('docs')),
     vscode.commands.registerCommand('flexvault.openWebsite', () => openLink('website')),
@@ -97,30 +219,19 @@ function reportWorkspaceRoot(roots: WorkspaceRoots): void {
   log?.info(`Using the FlexVault workspace at ${root.path}.`);
 }
 
-/**
- * One `status` at activation, in the form that takes no workspace lock. It
- * confirms the binary runs, puts both version gates through their paces, and
- * records the branch in the log. The status cache that replaces it arrives with
- * the source control provider.
- */
-async function probeWorkspace(fxv: FxvCommands, roots: WorkspaceRoots): Promise<void> {
-  if (!roots.primary()) {
-    return;
-  }
-  const result = await fxv.status({ skipRemoteUpdate: true });
-  if (!result.ok) {
-    log?.error(`fxv status failed: ${result.message}`);
-    return;
-  }
-  const { current_branch: branch, file_change_counts: counts, head_commit: head } = result.payload;
-  log?.info(
-    `On branch ${branch} (${head.state}), ${counts.total} changed ${counts.total === 1 ? 'file' : 'files'}.`,
-  );
-}
-
 function numberSetting(name: string, fallback: number): number {
   const value = vscode.workspace.getConfiguration('flexvault').get<number>(name);
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function booleanSetting(name: string, fallback: boolean): boolean {
+  const value = vscode.workspace.getConfiguration('flexvault').get<boolean>(name);
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function stringArraySetting(name: string, fallback: string[]): string[] {
+  const value = vscode.workspace.getConfiguration('flexvault').get<string[]>(name);
+  return Array.isArray(value) ? value : fallback;
 }
 
 function openLink(name: LinkName): Thenable<boolean> {
@@ -130,8 +241,6 @@ function openLink(name: LinkName): Thenable<boolean> {
 }
 
 export function deactivate(): void {
-  // In-flight writes are deliberately left running: a window reload must not be
-  // a way to manufacture an interrupted sync.
   log?.info('FlexVault deactivated.');
   log = undefined;
 }

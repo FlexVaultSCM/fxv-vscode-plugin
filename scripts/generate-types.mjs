@@ -42,6 +42,7 @@ const COMMON_DEFS = {
   commitRef: 'CommitRef',
   commitInfo: 'CommitInfo',
   changeKind: 'ChangeKind',
+  conflictState: 'ConflictState',
   authorDetails: 'AuthorDetails',
 };
 
