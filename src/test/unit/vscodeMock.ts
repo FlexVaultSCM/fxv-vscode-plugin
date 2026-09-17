@@ -74,6 +74,7 @@ export const ProgressLocation = {
 };
 
 export const window = {
+  activeTextEditor: undefined as { document: { uri: unknown } } | undefined,
   showInformationMessage: vi.fn().mockResolvedValue(undefined),
   showWarningMessage: vi.fn().mockResolvedValue(undefined),
   showErrorMessage: vi.fn().mockResolvedValue(undefined),

@@ -11,6 +11,23 @@ export function isPathUnderRoot(filePath: string, rootPath: string): boolean {
   return !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
+/**
+ * Resolves filePath to a root-relative, forward-slashed path, or undefined if
+ * filePath does not resolve to a path inside rootPath.
+ */
+export function toRelPathUnderRoot(filePath: string, rootPath: string): string | undefined {
+  if (!isPathUnderRoot(filePath, rootPath)) {
+    return undefined;
+  }
+
+  const relPath = path.relative(rootPath, filePath).replace(/\\/g, '/');
+  if (!relPath || relPath.startsWith('..') || path.isAbsolute(relPath)) {
+    return undefined;
+  }
+
+  return relPath;
+}
+
 export function filterDirtyDocsUnderRoot<T extends DocumentPath>(
   docs: readonly T[],
   rootPath: string,

@@ -145,6 +145,32 @@ describe('diffAgainstBaseCommand', () => {
     expect(execSpy).toHaveBeenCalledWith('vscode.open', fileUri);
   });
 
+  it('opens newly added file directly when invoked from editor/title with no descriptor', async () => {
+    // Override head_commit to empty_branch so there is no base revision
+    const emptyStatus: StatusPayload = {
+      current_branch: 'main',
+      head_commit: { state: 'empty_branch', branch: 'main' },
+      files: [{ path: 'new.txt', workspace_state: 'added' }],
+      file_change_counts: { total: 1, unpublished: 0, workspace_need_snapshot: 1 },
+    };
+    (ctx.statusCache as { status: StatusPayload }).status = emptyStatus;
+
+    const execSpy = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+    const fileUri = vscode.Uri.joinPath(rootUri, 'new.txt');
+    (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor = {
+      document: { uri: fileUri },
+    };
+
+    try {
+      // Editor/title and command-palette invocations pass no arguments at all.
+      await diffAgainstBaseCommand(ctx);
+
+      expect(execSpy).toHaveBeenCalledWith('vscode.open', fileUri);
+    } finally {
+      (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
+    }
+  });
+
   it('shows information message if file is deleted', async () => {
     const infoSpy = vi
       .spyOn(vscode.window, 'showInformationMessage')

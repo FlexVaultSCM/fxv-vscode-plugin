@@ -1,8 +1,7 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { toFxvUri } from '../providers/fxvUri';
-import { isPathUnderRoot } from '../state/safetyGuards';
+import { toRelPathUnderRoot } from '../state/safetyGuards';
 import type { StatusCache } from '../state/statusCache';
 import { resolveQuickDiffBaseRevision } from './diffBase';
 
@@ -24,12 +23,8 @@ export class FlexVaultQuickDiffProvider implements vscode.QuickDiffProvider {
       return undefined;
     }
 
-    if (!isPathUnderRoot(uri.fsPath, this.rootUri.fsPath)) {
-      return undefined;
-    }
-
-    const relPath = path.relative(this.rootUri.fsPath, uri.fsPath).replace(/\\/g, '/');
-    if (!relPath || relPath.startsWith('..') || path.isAbsolute(relPath)) {
+    const relPath = toRelPathUnderRoot(uri.fsPath, this.rootUri.fsPath);
+    if (!relPath) {
       return undefined;
     }
 

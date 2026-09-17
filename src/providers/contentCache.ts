@@ -39,7 +39,8 @@ export class ContentCache {
 
   private diskIndex = new Map<string, CacheEntryMetadata>();
   private totalDiskSizeBytes = 0;
-  private initialized = false;
+  private initPromise: Promise<void> | undefined;
+  private evictionLock: Promise<void> = Promise.resolve();
 
   constructor(options: ContentCacheOptions) {
     this.cacheDir = options.cacheDir;
@@ -50,7 +51,7 @@ export class ContentCache {
   updateCap(maxDiskSizeMB: number): void {
     const mb = Math.max(1, maxDiskSizeMB);
     this.maxDiskSizeBytes = mb * 1024 * 1024;
-    void this.evictIfNecessary();
+    void this.evictIfNecessary().then(() => this.saveIndex());
   }
 
   private entryKey(relPath: string, revisionSpec: string): string {
@@ -75,10 +76,13 @@ export class ContentCache {
    * If the version marker does not match, all cache contents are purged.
    */
   async initialize(): Promise<void> {
-    if (this.initialized) {
-      return;
+    if (!this.initPromise) {
+      this.initPromise = this.doInitialize();
     }
+    return this.initPromise;
+  }
 
+  private async doInitialize(): Promise<void> {
     try {
       await fs.mkdir(this.cacheDir, { recursive: true });
 
@@ -103,9 +107,10 @@ export class ContentCache {
         );
       } else {
         await this.loadIndex();
+        // The configured cap may have been lowered since this cache was last persisted.
+        await this.evictIfNecessary();
+        await this.saveIndex();
       }
-
-      this.initialized = true;
     } catch (err) {
       this.log?.error(
         `Failed to initialize content cache directory: ${err instanceof Error ? err.message : String(err)}`,
@@ -174,6 +179,7 @@ export class ContentCache {
    * Retrieves cached content for a path at a specific revision.
    */
   async get(relPath: string, revisionSpec: string): Promise<string | undefined> {
+    await this.initialize();
     const key = this.entryKey(relPath, revisionSpec);
 
     // 1. Check in-memory cache
@@ -218,6 +224,7 @@ export class ContentCache {
    * Stores content in the cache (memory + disk).
    */
   async set(relPath: string, revisionSpec: string, content: string): Promise<void> {
+    await this.initialize();
     const key = this.entryKey(relPath, revisionSpec);
     const byteLength = Buffer.byteLength(content, 'utf8');
 
@@ -284,31 +291,46 @@ export class ContentCache {
     this.memoryCacheSizeBytes += byteLength;
   }
 
+  /**
+   * Evicts oldest disk entries until the cache fits under the cap plus additionalBytes.
+   * Serialized via evictionLock: concurrent callers (e.g. a config-driven updateCap()
+   * racing a set()) must not build overlapping eviction candidate lists against the
+   * same diskIndex snapshot, which would double-decrement totalDiskSizeBytes.
+   */
   private async evictIfNecessary(additionalBytes = 0): Promise<void> {
-    if (this.totalDiskSizeBytes + additionalBytes <= this.maxDiskSizeBytes) {
-      return;
-    }
-
-    // Sort entries by lastAccessed ascending (oldest first)
-    const sorted = [...this.diskIndex.values()].sort((a, b) => a.lastAccessed - b.lastAccessed);
-
-    for (const entry of sorted) {
+    const run = async (): Promise<void> => {
       if (this.totalDiskSizeBytes + additionalBytes <= this.maxDiskSizeBytes) {
-        break;
+        return;
       }
 
-      try {
-        await fs.unlink(this.entryFilePath(entry.key));
-      } catch {
-        // File may already be gone
+      // Sort entries by lastAccessed ascending (oldest first)
+      const sorted = [...this.diskIndex.values()].sort((a, b) => a.lastAccessed - b.lastAccessed);
+
+      for (const entry of sorted) {
+        if (this.totalDiskSizeBytes + additionalBytes <= this.maxDiskSizeBytes) {
+          break;
+        }
+
+        // May already have been evicted by a prior queued call.
+        if (!this.diskIndex.has(entry.key)) {
+          continue;
+        }
+
+        try {
+          await fs.unlink(this.entryFilePath(entry.key));
+        } catch {
+          // File may already be gone
+        }
+
+        this.memoryCache.delete(entry.key);
+        this.diskIndex.delete(entry.key);
+        this.totalDiskSizeBytes -= entry.size;
       }
+    };
 
-      this.memoryCache.delete(entry.key);
-      this.diskIndex.delete(entry.key);
-      this.totalDiskSizeBytes -= entry.size;
-    }
-
-    await this.saveIndex();
+    const next = this.evictionLock.then(run, run);
+    this.evictionLock = next.catch(() => undefined);
+    return next;
   }
 
   /**

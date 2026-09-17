@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { toFxvUri } from '../providers/fxvUri';
 import { resolveDiffBaseRevision } from '../scm/diffBase';
 import type { ResourceDescriptor } from '../scm/resources';
-import { isPathUnderRoot } from '../state/safetyGuards';
+import { toRelPathUnderRoot } from '../state/safetyGuards';
 import type { CommandContext } from './types';
 
 export interface DiffTargetInput {
@@ -27,13 +27,7 @@ function resolveDiffTarget(
     return { uri: arg0, descriptor };
   }
 
-  // Case 2: called with FlexVaultResourceState object
-  if (arg0 && typeof arg0 === 'object' && 'resourceUri' in arg0) {
-    const item = arg0 as { resourceUri: vscode.Uri; descriptor?: ResourceDescriptor };
-    return { uri: item.resourceUri, descriptor: item.descriptor };
-  }
-
-  // Case 3: called from editor/title or palette
+  // Case 2: called from editor/title or palette
   const activeEditor = vscode.window.activeTextEditor;
   return { uri: activeEditor?.document.uri, descriptor: undefined };
 }
@@ -56,14 +50,13 @@ export async function diffAgainstBaseCommand(
     return;
   }
 
-  if (!ctx.rootUri || !isPathUnderRoot(uri.fsPath, ctx.rootUri.fsPath)) {
+  if (!ctx.rootUri) {
     return;
   }
 
-  const relPath =
-    descriptor?.path ?? path.relative(ctx.rootUri.fsPath, uri.fsPath).replace(/\\/g, '/');
+  const relPath = descriptor?.path ?? toRelPathUnderRoot(uri.fsPath, ctx.rootUri.fsPath);
 
-  if (!relPath || relPath.startsWith('..') || path.isAbsolute(relPath)) {
+  if (!relPath) {
     return;
   }
 
@@ -90,13 +83,11 @@ export async function diffAgainstBaseCommand(
   });
 
   if (!baseSpec) {
-    // If newly added without any prior base revision, open the file directly if clicked from SCM
+    // If newly added without any prior base revision, there is nothing to diff against,
+    // so just open the file directly regardless of how the command was invoked.
     if (descriptor?.changeKind === 'added' || file?.workspace_state === 'added') {
-      if (arg1 !== undefined) {
-        // Invoked from SCM resource click
-        await vscode.commands.executeCommand('vscode.open', uri);
-        return;
-      }
+      await vscode.commands.executeCommand('vscode.open', uri);
+      return;
     }
 
     void vscode.window.showInformationMessage(

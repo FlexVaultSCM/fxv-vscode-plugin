@@ -20,6 +20,14 @@ function specFromCommitRef(commitRef: CommitRef | undefined): string | undefined
   return commitRef ? specFromCommitInfo(commitRef.commit) : undefined;
 }
 
+function resolvePublishedThenLocal(head: HeadCommit | undefined): string | undefined {
+  return specFromCommitRef(getPublishedHead(head) ?? getLocalSnapshot(head));
+}
+
+function resolveLocalThenPublished(head: HeadCommit | undefined): string | undefined {
+  return specFromCommitRef(getLocalSnapshot(head) ?? getPublishedHead(head));
+}
+
 /**
  * Resolves the base revision spec to diff a file against, according to its axis (PLAN.md 5.3):
  * - Workspace axis (pending snapshot): diff against local snapshot first, falling back to published head.
@@ -37,33 +45,26 @@ export function resolveDiffBaseRevision(options: {
     return undefined;
   }
 
-  const localSnapshot = getLocalSnapshot(status.head_commit);
-  const publishedHead = getPublishedHead(status.head_commit);
-
   // 1. Explicit group known
   if (group === 'workspace') {
-    return specFromCommitRef(localSnapshot ?? publishedHead);
+    return resolveLocalThenPublished(status.head_commit);
   }
 
-  if (group === 'unpublished') {
-    return specFromCommitRef(publishedHead ?? localSnapshot);
-  }
-
-  if (group === 'conflicts') {
-    return specFromCommitRef(publishedHead ?? localSnapshot);
+  if (group === 'unpublished' || group === 'conflicts') {
+    return resolvePublishedThenLocal(status.head_commit);
   }
 
   // 2. Infer from file status if group was not explicitly provided (e.g. from editor title diff)
   if (file?.workspace_state) {
-    return specFromCommitRef(localSnapshot ?? publishedHead);
+    return resolveLocalThenPublished(status.head_commit);
   }
 
   if (file?.unpublished_state) {
-    return specFromCommitRef(publishedHead ?? localSnapshot);
+    return resolvePublishedThenLocal(status.head_commit);
   }
 
   // 3. Fallback: published head first, then local snapshot
-  return specFromCommitRef(publishedHead ?? localSnapshot);
+  return resolvePublishedThenLocal(status.head_commit);
 }
 
 /**
@@ -78,7 +79,5 @@ export function resolveQuickDiffBaseRevision(
     return undefined;
   }
 
-  const publishedHead = getPublishedHead(status.head_commit);
-  const localSnapshot = getLocalSnapshot(status.head_commit);
-  return specFromCommitRef(publishedHead ?? localSnapshot);
+  return resolvePublishedThenLocal(status.head_commit);
 }

@@ -103,4 +103,47 @@ describe('ContentCache', () => {
     expect(await cache.get('file2.txt', 'main.1')).toBe('12345678901234567890');
     expect(await cache.get('file3.txt', 'main.1')).toBe('12345678901234567890');
   });
+
+  it('trims an oversized on-disk cache when reinitialized under a lowered cap', async () => {
+    const cache1 = new ContentCache({ cacheDir: tmpDir, maxDiskSizeMB: 1 });
+    await cache1.initialize();
+    await cache1.set('file1.txt', 'main.1', '12345678901234567890'); // 20 bytes
+    await new Promise((r) => setTimeout(r, 10));
+    await cache1.set('file2.txt', 'main.1', '12345678901234567890'); // 20 bytes
+    expect(cache1.entryCount).toBe(2);
+
+    // Simulate the user lowering flexvault.contentCacheSizeMB and reloading the window:
+    // a fresh instance is constructed with a cap the existing on-disk cache already exceeds.
+    const cache2 = new ContentCache({ cacheDir: tmpDir });
+    (cache2 as unknown as { maxDiskSizeBytes: number }).maxDiskSizeBytes = 25;
+    await cache2.initialize();
+
+    expect(cache2.entryCount).toBe(1);
+    expect(cache2.totalBytes).toBeLessThanOrEqual(25);
+    expect(await cache2.get('file1.txt', 'main.1')).toBeUndefined();
+    expect(await cache2.get('file2.txt', 'main.1')).toBe('12345678901234567890');
+  });
+
+  it('does not double-decrement tracked size when evictions race', async () => {
+    const cache = new ContentCache({ cacheDir: tmpDir, maxDiskSizeMB: 1 });
+    await cache.initialize();
+    (cache as unknown as { maxDiskSizeBytes: number }).maxDiskSizeBytes = 50;
+
+    await cache.set('file1.txt', 'main.1', '12345678901234567890'); // 20 bytes
+    await new Promise((r) => setTimeout(r, 10));
+    await cache.set('file2.txt', 'main.1', '12345678901234567890'); // 20 bytes
+
+    // A new write and a concurrent config-driven cap refresh (e.g. flexvault.contentCacheSizeMB
+    // changing) both trigger eviction of the same over-cap state; they must serialize rather
+    // than each independently decrementing totalDiskSizeBytes for the same evicted entry.
+    const setPromise = cache.set('file3.txt', 'main.1', '12345678901234567890'); // 20 bytes
+    const evictPromise = (
+      cache as unknown as { evictIfNecessary: (n?: number) => Promise<void> }
+    ).evictIfNecessary();
+    await Promise.all([setPromise, evictPromise]);
+
+    const diskIndex = (cache as unknown as { diskIndex: Map<string, { size: number }> }).diskIndex;
+    const sum = [...diskIndex.values()].reduce((acc, e) => acc + e.size, 0);
+    expect(cache.totalBytes).toBe(sum);
+  });
 });
