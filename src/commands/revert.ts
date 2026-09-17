@@ -82,11 +82,7 @@ export async function revertCommand(
   await ctx.statusCache?.refresh({ skipRemoteUpdate: true });
 }
 
-function extractPaths(
-  ctx: CommandContext,
-  resource?: unknown,
-  selected?: unknown[],
-): string[] {
+function extractPaths(ctx: CommandContext, resource?: unknown, selected?: unknown[]): string[] {
   if (Array.isArray(selected) && selected.length > 0) {
     return selected
       .map((item) => extractSinglePath(ctx, item))
