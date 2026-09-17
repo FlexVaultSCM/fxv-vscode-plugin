@@ -18,6 +18,18 @@ suite('extension activation', () => {
     const commands = await vscode.commands.getCommands(true);
     for (const id of [
       'flexvault.showLog',
+      'flexvault.refresh',
+      'flexvault.snapshot',
+      'flexvault.publish',
+      'flexvault.sync',
+      'flexvault.goto',
+      'flexvault.revert',
+      'flexvault.resolveMine',
+      'flexvault.resolveTheirs',
+      'flexvault.resolveUndo',
+      'flexvault.login',
+      'flexvault.logout',
+      'flexvault.openSettings',
       'flexvault.openDocumentation',
       'flexvault.openWebsite',
       'flexvault.reportFeedback',

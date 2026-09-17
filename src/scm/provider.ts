@@ -86,6 +86,10 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     }
   }
 
+  get inputBox(): vscode.SourceControlInputBox {
+    return this.scm.inputBox;
+  }
+
   setBusy(busy: boolean): void {
     this.scm.inputBox.enabled = !busy;
   }

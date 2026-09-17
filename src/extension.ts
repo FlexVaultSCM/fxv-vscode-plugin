@@ -7,6 +7,7 @@ import { describeLockHolder, parseLockHolder } from './cli/lockErrors';
 import { CliRunner } from './cli/runner';
 import { VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
+import { registerCommands } from './commands';
 import { LINKS, type LinkName } from './links';
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
@@ -189,13 +190,17 @@ export function activate(context: vscode.ExtensionContext): void {
         await statusCache.refresh({ skipRemoteUpdate: false });
       }
     }),
-    vscode.commands.registerCommand('flexvault.publish', async () => {
-      // Phase 4 will implement the full publish flow.
-      vscode.window.showInformationMessage('FlexVault publish will be available in Phase 4.');
-    }),
     vscode.commands.registerCommand('flexvault.openDocumentation', () => openLink('docs')),
     vscode.commands.registerCommand('flexvault.openWebsite', () => openLink('website')),
     vscode.commands.registerCommand('flexvault.reportFeedback', () => openLink('discord')),
+    ...registerCommands(() => ({
+      fxv,
+      statusCache,
+      scmProvider,
+      log,
+      context,
+      rootUri: roots.primary() ? vscode.Uri.file(roots.primary()!.path) : undefined,
+    })),
   );
 }
 
