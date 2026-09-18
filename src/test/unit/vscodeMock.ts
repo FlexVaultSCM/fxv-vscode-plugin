@@ -79,6 +79,11 @@ export const window = {
   showWarningMessage: vi.fn().mockResolvedValue(undefined),
   showErrorMessage: vi.fn().mockResolvedValue(undefined),
   showInputBox: vi.fn().mockResolvedValue(undefined),
+  showTextDocument: vi.fn().mockResolvedValue(undefined),
+  createTreeView: vi.fn().mockImplementation(() => ({
+    reveal: vi.fn().mockResolvedValue(undefined),
+    dispose: vi.fn(),
+  })),
   withProgress: vi
     .fn()
     .mockImplementation(
@@ -104,7 +109,49 @@ export const workspace = {
   getConfiguration: vi.fn().mockReturnValue({
     get: vi.fn(),
   }),
+  fs: {
+    stat: vi.fn().mockResolvedValue({}),
+  },
 };
+
+export const env = {
+  clipboard: {
+    writeText: vi.fn().mockResolvedValue(undefined),
+  },
+};
+
+export class ThemeIcon {
+  constructor(
+    readonly id: string,
+    readonly color?: unknown,
+  ) {}
+}
+
+export class ThemeColor {
+  constructor(readonly id: string) {}
+}
+
+export enum TreeItemCollapsibleState {
+  None = 0,
+  Collapsed = 1,
+  Expanded = 2,
+}
+
+export class TreeItem {
+  label?: string;
+  description?: string;
+  tooltip?: string;
+  contextValue?: string;
+  iconPath?: unknown;
+  resourceUri?: unknown;
+  command?: unknown;
+  collapsibleState: TreeItemCollapsibleState | undefined;
+
+  constructor(label: string, collapsibleState?: TreeItemCollapsibleState) {
+    this.label = label;
+    this.collapsibleState = collapsibleState;
+  }
+}
 
 export const debug = {
   activeDebugSession: undefined as unknown,

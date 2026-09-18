@@ -131,6 +131,27 @@
         "command": "flexvault.openSettings",
         "title": "Open Settings",
         "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.historyShowChanges",
+        "title": "Show Changes",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.historyGotoRevision",
+        "title": "Go to Revision...",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.historyCopyRevision",
+        "title": "Copy Revision",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.historyRefresh",
+        "title": "Refresh History",
+        "category": "FlexVault",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -190,6 +211,30 @@
           "when": "resourceScheme == file && flexvault.enabled"
         }
       ],
+      "view/title": [
+        {
+          "command": "flexvault.historyRefresh",
+          "when": "view == flexvaultHistory",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "flexvault.historyShowChanges",
+          "when": "view == flexvaultHistory && viewItem == flexvaultHistoryCommit",
+          "group": "1_history@1"
+        },
+        {
+          "command": "flexvault.historyGotoRevision",
+          "when": "view == flexvaultHistory && viewItem == flexvaultHistoryCommit && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible",
+          "group": "1_history@2"
+        },
+        {
+          "command": "flexvault.historyCopyRevision",
+          "when": "view == flexvaultHistory && viewItem == flexvaultHistoryCommit",
+          "group": "1_history@3"
+        }
+      ],
       "commandPalette": [
         {
           "command": "flexvault.diffAgainstBase",
@@ -242,6 +287,31 @@
         {
           "command": "flexvault.resolveUndo",
           "when": "false"
+        },
+        {
+          "command": "flexvault.historyShowChanges",
+          "when": "false"
+        },
+        {
+          "command": "flexvault.historyGotoRevision",
+          "when": "false"
+        },
+        {
+          "command": "flexvault.historyCopyRevision",
+          "when": "false"
+        },
+        {
+          "command": "flexvault.historyRefresh",
+          "when": "flexvault.enabled"
+        }
+      ]
+    },
+    "views": {
+      "scm": [
+        {
+          "id": "flexvaultHistory",
+          "name": "History",
+          "when": "flexvault.enabled"
         }
       ]
     },
@@ -296,6 +366,13 @@
           "minimum": 1,
           "scope": "machine",
           "markdownDescription": "Maximum size in megabytes for the on-disk cat content cache used by diff and quick diff."
+        },
+        "flexvault.historyLimit": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "scope": "window",
+          "markdownDescription": "Number of commits requested with `history -n` for the History view."
         },
         "flexvault.logLevel": {
           "type": "string",

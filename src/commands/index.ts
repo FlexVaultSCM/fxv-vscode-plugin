@@ -3,6 +3,12 @@ import * as vscode from 'vscode';
 import { loginCommand, logoutCommand } from './auth';
 import { clearCacheCommand, diffAgainstBaseCommand } from './diff';
 import { gotoCommand } from './goto';
+import {
+  historyCopyRevisionCommand,
+  historyGotoRevisionCommand,
+  historyOpenChangeCommand,
+  historyShowChangesCommand,
+} from './history';
 import { publishCommand } from './publish';
 import { resolveCommand } from './resolve';
 import { revertCommand } from './revert';
@@ -71,6 +77,38 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
 
     vscode.commands.registerCommand('flexvault.openSettings', async () => {
       await vscode.commands.executeCommand('workbench.action.openSettings', 'flexvault');
+    }),
+
+    vscode.commands.registerCommand('flexvault.historyShowChanges', async (...args: unknown[]) => {
+      await historyShowChangesCommand(
+        ctxProvider(),
+        args[0] as Parameters<typeof historyShowChangesCommand>[1],
+      );
+    }),
+
+    vscode.commands.registerCommand('flexvault.historyGotoRevision', async (...args: unknown[]) => {
+      await historyGotoRevisionCommand(
+        ctxProvider(),
+        args[0] as Parameters<typeof historyGotoRevisionCommand>[1],
+      );
+    }),
+
+    vscode.commands.registerCommand('flexvault.historyCopyRevision', async (...args: unknown[]) => {
+      await historyCopyRevisionCommand(
+        ctxProvider(),
+        args[0] as Parameters<typeof historyCopyRevisionCommand>[1],
+      );
+    }),
+
+    vscode.commands.registerCommand('flexvault.historyOpenChange', async (...args: unknown[]) => {
+      await historyOpenChangeCommand(
+        ctxProvider(),
+        args[0] as Parameters<typeof historyOpenChangeCommand>[1],
+      );
+    }),
+
+    vscode.commands.registerCommand('flexvault.historyRefresh', () => {
+      ctxProvider().historyProvider?.refresh();
     }),
   );
 

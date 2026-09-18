@@ -11,6 +11,8 @@ import { registerCommands } from './commands';
 import { LINKS, type LinkName } from './links';
 import { ContentCache } from './providers/contentCache';
 import { FxvContentProvider, FXV_SCHEME } from './providers/contentProvider';
+import type { HistoryTreeElement } from './providers/historyItems';
+import { HistoryTreeProvider } from './providers/historyTree';
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
 import { ContextKeys } from './state/contextKeys';
@@ -60,6 +62,11 @@ export function activate(context: vscode.ExtensionContext): void {
     onBusyChanged: (busy) => {
       void contextKeys.setBusy(busy);
       scmProvider?.setBusy(busy);
+      // History only moves on a write command, so refresh once the mutation
+      // queue drains rather than on every debounced status read.
+      if (!busy) {
+        historyProvider.refresh();
+      }
     },
     onPossiblyInterrupted: (reason) => {
       log?.error(`The workspace may be mid-operation: ${reason}. Run fxv status to check.`);
@@ -67,6 +74,16 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   });
   const fxv = new FxvCommands(runner);
+
+  const historyProvider = new HistoryTreeProvider(
+    fxv,
+    () => numberSetting('historyLimit', 50, 1),
+    log,
+  );
+  const historyTreeView = vscode.window.createTreeView<HistoryTreeElement>('flexvaultHistory', {
+    treeDataProvider: historyProvider,
+  });
+  context.subscriptions.push(historyProvider, historyTreeView);
 
   const teardownRoot = () => {
     for (const d of rootSubscriptions) {
@@ -82,6 +99,10 @@ export function activate(context: vscode.ExtensionContext): void {
     teardownRoot();
     const primary = roots.primary();
     reportWorkspaceRoot(roots);
+    // History is keyed to the active root's fxv workspace, same as scmProvider
+    // and statusCache below; without this it keeps showing the previous
+    // root's commits until some unrelated event happens to trigger a refresh.
+    historyProvider.refresh();
 
     if (!primary) {
       void contextKeys.setEnabled(false);
@@ -191,6 +212,9 @@ export function activate(context: vscode.ExtensionContext): void {
       ) {
         statusCache?.updateConfiguration();
       }
+      if (event.affectsConfiguration('flexvault.historyLimit')) {
+        historyProvider.refresh();
+      }
     }),
   );
 
@@ -217,6 +241,8 @@ export function activate(context: vscode.ExtensionContext): void {
       statusCache,
       scmProvider,
       contentCache,
+      historyTreeView,
+      historyProvider,
       log,
       context,
       rootUri: roots.primary() ? vscode.Uri.file(roots.primary()!.path) : undefined,
@@ -244,9 +270,9 @@ function reportWorkspaceRoot(roots: WorkspaceRoots): void {
   log?.info(`Using the FlexVault workspace at ${root.path}.`);
 }
 
-function numberSetting(name: string, fallback: number): number {
+function numberSetting(name: string, fallback: number, min = 0): number {
   const value = vscode.workspace.getConfiguration('flexvault').get<number>(name);
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+  return typeof value === 'number' && Number.isFinite(value) && value >= min ? value : fallback;
 }
 
 function booleanSetting(name: string, fallback: boolean): boolean {

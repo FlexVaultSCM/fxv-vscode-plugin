@@ -32,6 +32,11 @@ suite('extension activation', () => {
       'flexvault.openDocumentation',
       'flexvault.openWebsite',
       'flexvault.reportFeedback',
+      'flexvault.historyShowChanges',
+      'flexvault.historyGotoRevision',
+      'flexvault.historyCopyRevision',
+      'flexvault.historyOpenChange',
+      'flexvault.historyRefresh',
     ]) {
       assert.ok(commands.includes(id), `missing command ${id}`);
     }
