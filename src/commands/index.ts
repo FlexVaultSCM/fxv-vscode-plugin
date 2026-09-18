@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { loginCommand, logoutCommand } from './auth';
+import { clearCacheCommand, diffAgainstBaseCommand } from './diff';
 import { gotoCommand } from './goto';
 import { publishCommand } from './publish';
 import { resolveCommand } from './resolve';
@@ -14,6 +15,13 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
   const disposables: vscode.Disposable[] = [];
 
   disposables.push(
+    vscode.commands.registerCommand('flexvault.diffAgainstBase', async (...args: unknown[]) => {
+      await diffAgainstBaseCommand(ctxProvider(), args[0], args[1]);
+    }),
+
+    vscode.commands.registerCommand('flexvault.clearCache', async () => {
+      await clearCacheCommand(ctxProvider());
+    }),
     vscode.commands.registerCommand('flexvault.publish', async (...args: unknown[]) => {
       const desc = typeof args[0] === 'string' ? args[0] : undefined;
       await publishCommand(ctxProvider(), desc);

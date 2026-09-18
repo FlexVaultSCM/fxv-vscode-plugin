@@ -9,6 +9,8 @@ import { VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
 import { registerCommands } from './commands';
 import { LINKS, type LinkName } from './links';
+import { ContentCache } from './providers/contentCache';
+import { FxvContentProvider, FXV_SCHEME } from './providers/contentProvider';
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
 import { ContextKeys } from './state/contextKeys';
@@ -34,6 +36,14 @@ export function activate(context: vscode.ExtensionContext): void {
   const contextKeys = new ContextKeys((key, value) =>
     vscode.commands.executeCommand('setContext', key, value),
   );
+
+  const cacheDir = path.join(context.globalStorageUri.fsPath, 'cat-cache');
+  const contentCache = new ContentCache({
+    cacheDir,
+    maxDiskSizeMB: numberSetting('contentCacheSizeMB', 512),
+    log,
+  });
+  void contentCache.initialize();
 
   let scmProvider: FlexVaultScmProvider | undefined;
   let statusCache: StatusCache | undefined;
@@ -171,6 +181,9 @@ export function activate(context: vscode.ExtensionContext): void {
         versionGuard.reset();
         void contextKeys.setCliIncompatible(versionGuard.blocked);
       }
+      if (event.affectsConfiguration('flexvault.contentCacheSizeMB')) {
+        contentCache.updateCap(numberSetting('contentCacheSizeMB', 512));
+      }
       if (
         event.affectsConfiguration('flexvault.watchEnabled') ||
         event.affectsConfiguration('flexvault.watchExclude') ||
@@ -179,6 +192,12 @@ export function activate(context: vscode.ExtensionContext): void {
         statusCache?.updateConfiguration();
       }
     }),
+  );
+
+  const contentProvider = new FxvContentProvider(fxv, contentCache, log);
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider(FXV_SCHEME, contentProvider),
+    contentProvider,
   );
 
   context.subscriptions.push(
@@ -197,6 +216,7 @@ export function activate(context: vscode.ExtensionContext): void {
       fxv,
       statusCache,
       scmProvider,
+      contentCache,
       log,
       context,
       rootUri: roots.primary() ? vscode.Uri.file(roots.primary()!.path) : undefined,

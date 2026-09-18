@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import type { StatusPayload } from '../cli/types.generated';
 import type { Logger } from '../cli/logger';
 import type { StatusCache } from '../state/statusCache';
+import { FlexVaultQuickDiffProvider } from './quickDiff';
 import { mapStatusToResourceDescriptors, type ResourceDescriptor } from './resources';
 
 export interface FlexVaultResourceState extends vscode.SourceControlResourceState {
@@ -30,9 +31,9 @@ export function createSourceControlResourceState(
       ? {}
       : {
           command: {
-            command: 'vscode.open',
-            title: 'Open',
-            arguments: [uri],
+            command: 'flexvault.diffAgainstBase',
+            title: 'Open Changes',
+            arguments: [uri, descriptor],
           },
         }),
   };
@@ -61,6 +62,7 @@ export class FlexVaultScmProvider implements vscode.Disposable {
       command: 'flexvault.publish',
       title: 'Publish',
     };
+    this.scm.quickDiffProvider = new FlexVaultQuickDiffProvider(rootUri, statusCache);
 
     // Conflicts group is listed first, blocks publish, hideWhenEmpty is true
     this.conflictsGroup = this.scm.createResourceGroup('conflicts', 'Conflicts');
