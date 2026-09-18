@@ -17,7 +17,7 @@ import { VersionGuard } from '../../cli/versionGuard';
 /**
  * The runner is exercised against a stand-in `fxv`: a Node script spawned the
  * same way the fxv binary is. Mocking `spawn` would test the mock, and the
- * timeout policy is the part most worth testing against a live process.
+ * timeout policy requires testing against a live process.
  */
 
 let workDir: string;

@@ -5,7 +5,7 @@
 <h1 align="center">FlexVault for Visual Studio Code</h1>
 
 <p align="center">
-  Visual Studio Code source control integration for <a href="https://fxv.dev">FlexVault</a>. Drives the <code>fxv</code> CLI directly from your editor.
+  Visual Studio Code source control integration for <a href="https://fxv.dev">FlexVault</a>. Drives the <code>fxv</code> CLI from your editor.
 </p>
 
 <p align="center">
@@ -18,49 +18,47 @@
 
 ## Overview
 
-FlexVault is a modern, high-performance version control system designed for game development and large binary assets. This extension integrates FlexVault directly into Visual Studio Code's Source Control panel, gutter diffs, and editor workflows.
+FlexVault is a version control system designed for game development and binary assets. This extension integrates FlexVault into Visual Studio Code's Source Control panel, gutter diffs, and editor workflows.
 
 ## Features
 
-- **Integrated Source Control Management (SCM):**
-  - View changes organized into three dedicated groups:
-    - **Conflicts:** Unresolved merge conflicts, highlighted with clear descriptions (content clashes, deleted files, and file/directory type changes).
-    - **Unpublished:** Snapshotted changes waiting to be published to your branch.
-    - **Workspace:** Real-time un-snapshotted modifications on disk.
-  - Automatic status updates on file save, creation, deletion, and rename, with background lock prevention (`--skip-remote-update`).
-  - Strict `.fxvignore` honor and path filtering.
+### Source control management
 
-- **Reliable Publish Pipeline:**
-  - One-click publish flow from the SCM panel or Command Palette.
-  - Automated safety steps: verifies conflict-free state, ensures active user authentication, creates draft snapshots, performs behind-remote checks, and synchronizes upstream changes before publishing.
-  - Informative partial-failure reporting keeping unpublished drafts safe on failure.
+Files appear in the Source Control panel across three groups:
 
-- **Conflict Resolution:**
-  - Contextual conflict actions directly within the Conflicts group:
-    - **Resolve (Keep Mine)**: Keep local modifications.
-    - **Resolve (Take Theirs)**: Accept remote or target changes.
-    - **Resolve (Undo)**: Revert resolution to re-inspect conflicts.
-  - Informative tooltips and badges detailing conflict types.
+- Conflicts: Unresolved merge conflicts, noting content differences, deletion clashes, or file and directory type changes.
+- Unpublished: Snapshotted revisions waiting to publish to your branch.
+- Workspace: Unsaved or unsnapshotted disk modifications.
 
-- **Diffs & Editor Gutters:**
-  - Interactive side-by-side diffing against the published base revision or local snapshot.
-  - Real-time gutter decorations (`quickDiffProvider`) powered by a custom `fxv:` content provider.
-  - Built-in LRU disk and memory content cache designed to handle large assets without slowing down the editor.
+Status updates automatically on file save, creation, deletion, and rename. Background updates pass `--skip-remote-update` to avoid acquiring workspace locks. The extension respects `.fxvignore` patterns.
 
-- **Revision History View:**
-  - Dedicated FlexVault History tree view in the Source Control container.
-  - Browse past commits, author attribution, relative timestamps, and commit descriptions.
-  - Expand revisions to inspect changed files and open instant side-by-side diffs.
-  - Fast context actions: **Go to Revision...** and **Copy Revision Spec**.
+### Publish workflow
 
-- **Interrupted Operation Recovery:**
-  - Automatic detection of interrupted synchronization or navigation operations (CLI exit code 98).
-  - High-visibility notification banners parsing structured recovery journals.
-  - Single-click **Finish** (`fxv resume --continue`) and **Undo** (`fxv resume --rollback`) actions.
+The publish action runs from the SCM panel or the Command Palette. It verifies authentication, snapshots open changes, checks if the local branch is behind remote revisions, synchronizes changes, and publishes. If a remote sync produces conflicts, publishing pauses and routes the conflicting files to the Conflicts group.
 
-- **Status Bar & Safety Protections:**
-  - Status bar item showing the active branch, revisions behind remote, and authentication status. Click to sync.
-  - Safeguards prevent destructive or mutating operations while unsaved dirty editors exist or during active debug sessions.
+### Conflict resolution
+
+Conflict actions are accessible directly on items in the Conflicts group:
+
+- Resolve (Keep Mine): Keeps local modifications.
+- Resolve (Take Theirs): Accepts target changes.
+- Resolve (Undo): Clears the chosen resolution to re-examine the conflict.
+
+### Diffs and editor gutters
+
+The extension provides side-by-side diffs against the published base revision or local snapshot. Gutter decorations indicate modified, added, and deleted lines through the `fxv:` content provider. An LRU disk and memory cache stores diff contents for binary and text assets.
+
+### Revision history
+
+The FlexVault History view in the SCM container lists past commits with author attribution, timestamps, and commit descriptions. Revisions expand to display changed files, which open in comparison diffs on click. Context actions allow switching to past revisions or copying revision specs.
+
+### Interrupted operation recovery
+
+If a sync or navigation command is interrupted (CLI exit code 98), the extension detects the journal state and displays a recovery banner. You can select Finish (`fxv resume --continue`) or Undo (`fxv resume --rollback`).
+
+### Status bar and safety checks
+
+The status bar displays the active branch, revisions behind remote, and current user attribution. Clicking the status bar triggers a sync. Operations refuse to run when open editors have unsaved changes or while a debug session is active.
 
 ---
 

@@ -62,7 +62,7 @@ describe('commitsFromHistoryPayload', () => {
 });
 
 describe('changesFromChangeInfoPayload', () => {
-  it('carries the commit spec onto each change entry', () => {
+  it('attaches the commit spec to each change entry', () => {
     const payload: ChangeInfoPayload = {
       commit: { branch: 'main', type: 'published', revision: 11 },
       timestamp_millis_since_epoch_utc: Date.now(),
