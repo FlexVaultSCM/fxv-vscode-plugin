@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=flexvault.flexvault-vscode">Marketplace</a> ·
   <a href="https://fxv.dev">Website</a> ·
   <a href="https://docs.fxv.dev">Documentation</a> ·
   <a href="https://discord.gg/KCMHRQBDf">Discord Community</a>
@@ -68,6 +69,22 @@ The status bar displays the active branch, revisions behind remote, and current 
 - **FlexVault CLI**: `fxv` (version `0.9.0` or newer, compatible up to `< 0.11.0`).
   - The CLI must be accessible on your system `PATH` or configured via the `flexvault.cliPath` setting.
   - On Windows, install via the official installer; on macOS/Linux, install via standard package paths or Cargo.
+
+---
+
+## Installation
+
+Install the extension directly from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flexvault.flexvault-vscode):
+
+```sh
+code --install-extension flexvault.flexvault-vscode
+```
+
+Or install within VS Code:
+
+1. Open the Extensions view (`Ctrl+Shift+X` or `Cmd+Shift+X`).
+2. Search for `FlexVault`.
+3. Select the extension published by `flexvault` and click **Install**.
 
 ---
 
