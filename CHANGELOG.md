@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.3.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.2.0...v0.3.0) (2026-09-18)
+
+
+### Features
+
+* implement diff against base, quick diff, and content cache ([#11](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/11)) ([5d45a89](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/5d45a891ae01e83be83f7cc808509d7f14df474f))
+* implement SCM mutation commands and publish flow ([#10](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/10)) ([178d068](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/178d068a4b65c7a711145bd9be8e138660569078))
+* implement source control provider and status caching ([#9](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/9)) ([a4c70c6](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/a4c70c6a0abda2b011d52fc9fb6cf5a81218f482))
+
 ## [0.2.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.1.0...v0.2.0) (2026-09-12)
 
 
