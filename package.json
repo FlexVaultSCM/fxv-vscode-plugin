@@ -118,6 +118,16 @@
         "category": "FlexVault"
       },
       {
+        "command": "flexvault.resume",
+        "title": "Finish Interrupted Operation",
+        "category": "FlexVault"
+      },
+      {
+        "command": "flexvault.resumeRollback",
+        "title": "Undo Interrupted Operation",
+        "category": "FlexVault"
+      },
+      {
         "command": "flexvault.diffAgainstBase",
         "title": "Diff Against Base",
         "category": "FlexVault"
@@ -275,6 +285,14 @@
         {
           "command": "flexvault.logout",
           "when": "flexvault.enabled && flexvault.loggedIn"
+        },
+        {
+          "command": "flexvault.resume",
+          "when": "false"
+        },
+        {
+          "command": "flexvault.resumeRollback",
+          "when": "false"
         },
         {
           "command": "flexvault.resolveMine",

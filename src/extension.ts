@@ -16,8 +16,10 @@ import { HistoryTreeProvider } from './providers/historyTree';
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
 import { ContextKeys } from './state/contextKeys';
+import { RecoveryManager } from './state/recovery';
 import { StatusCache } from './state/statusCache';
 import { Log } from './ui/log';
+import { StatusBar } from './ui/statusBar';
 
 const EXTENSION_ID = 'flexvault.flexvault-vscode';
 
@@ -38,6 +40,15 @@ export function activate(context: vscode.ExtensionContext): void {
   const contextKeys = new ContextKeys((key, value) =>
     vscode.commands.executeCommand('setContext', key, value),
   );
+  void contextKeys.setCliNotFound(discovery.locate().source === 'fallback');
+
+  const statusBar = new StatusBar();
+  context.subscriptions.push(statusBar);
+
+  const recoveryManager = new RecoveryManager({
+    showLog: () => log?.show(),
+    executeCommand: (command) => void vscode.commands.executeCommand(command),
+  });
 
   const cacheDir = path.join(context.globalStorageUri.fsPath, 'cat-cache');
   const contentCache = new ContentCache({
@@ -72,6 +83,9 @@ export function activate(context: vscode.ExtensionContext): void {
       log?.error(`The workspace may be mid-operation: ${reason}. Run fxv status to check.`);
       void contextKeys.setInterrupted(true);
     },
+    onVersionVerdict: (blocked) => {
+      void contextKeys.setCliIncompatible(blocked);
+    },
   });
   const fxv = new FxvCommands(runner);
 
@@ -93,6 +107,8 @@ export function activate(context: vscode.ExtensionContext): void {
     scmProvider = undefined;
     statusCache = undefined;
     decorationProvider = undefined;
+    statusBar.update(undefined);
+    recoveryManager.clear();
   };
 
   const setupRoot = () => {
@@ -121,8 +137,9 @@ export function activate(context: vscode.ExtensionContext): void {
       isWatchEnabled: () => booleanSetting('watchEnabled', true),
       getWatchExclude: () => stringArraySetting('watchExclude', []),
       log,
-      onInterrupted: () => {
+      onInterrupted: (error) => {
         void contextKeys.setInterrupted(true);
+        recoveryManager.handleInterrupted(error);
       },
       onLockContention: (msg) => {
         const holder = parseLockHolder(msg);
@@ -144,6 +161,8 @@ export function activate(context: vscode.ExtensionContext): void {
       statusCache.onDidChangeStatus((status) => {
         decorationProvider?.update(status, rootUri);
         void contextKeys.updateFromStatus(status);
+        statusBar.update(status);
+        recoveryManager.clear();
       }),
     );
 
@@ -201,6 +220,7 @@ export function activate(context: vscode.ExtensionContext): void {
         discovery.invalidate();
         versionGuard.reset();
         void contextKeys.setCliIncompatible(versionGuard.blocked);
+        void contextKeys.setCliNotFound(discovery.locate().source === 'fallback');
       }
       if (event.affectsConfiguration('flexvault.contentCacheSizeMB')) {
         contentCache.updateCap(numberSetting('contentCacheSizeMB', 512));

@@ -106,6 +106,8 @@ export interface RunnerDependencies {
   readonly onBusyChanged?: (busy: boolean) => void;
   /** Called when a command may have left the workspace half-applied. */
   readonly onPossiblyInterrupted?: (reason: string) => void;
+  /** Called after every version check with whether the CLI is now blocked. */
+  readonly onVersionVerdict?: (blocked: boolean) => void;
 }
 
 export type Spawn = (
@@ -172,6 +174,7 @@ export class CliRunner {
     }
 
     const versionFailure = this.checkVersions(parsed.envelope, text);
+    this.deps.onVersionVerdict?.(this.guard.blocked);
     if (versionFailure) {
       return versionFailure;
     }
