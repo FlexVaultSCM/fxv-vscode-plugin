@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.4.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.3.0...v0.4.0) (2026-09-18)
+
+
+### Features
+
+* add a standalone snapshot command and welcome views ([#15](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/15)) ([e53b778](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/e53b778c62310444250d9b8c16cd1e482fdf8675))
+* add interrupted-operation recovery and the status bar ([#14](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/14)) ([03394b2](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/03394b23d488edc2ddd72b8884c1c93e1557491e))
+* add the history TreeView ([#13](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/13)) ([be720ce](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/be720ce8bffe3d857371975f06a75c4c31028be5))
+
 ## [0.3.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.2.0...v0.3.0) (2026-09-18)
 
 
