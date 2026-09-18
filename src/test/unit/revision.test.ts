@@ -26,7 +26,7 @@ describe('specFromCommitInfo', () => {
     expect(specFromCommitInfo({ branch: 'art', type: 'published', revision: 2 })).toBe('art.2');
   });
 
-  it('refuses a draft with no draft revision rather than naming another commit', () => {
+  it('refuses a draft with no draft revision rather than identifying another commit', () => {
     // Falling through would build main.11: the published parent, not the draft.
     expect(() => specFromCommitInfo({ branch: 'main', type: 'draft', revision: 11 })).toThrow(
       /draft revision/,

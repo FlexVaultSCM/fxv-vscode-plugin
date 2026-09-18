@@ -41,7 +41,7 @@ export async function gotoCommand(ctx: CommandContext, revisionSpec?: unknown): 
     return;
   }
 
-  // Modal confirmation per PLAN.md 4.3
+  // Modal confirmation since goto rewrites the workspace
   const choice = await vscode.window.showWarningMessage(
     `Switch to revision ${spec}? Your current workspace state will be snapshotted first.`,
     { modal: true },

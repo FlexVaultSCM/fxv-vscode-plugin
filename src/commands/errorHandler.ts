@@ -5,7 +5,7 @@ import type { RunFailure } from '../cli/runner';
 import type { CommandContext } from './types';
 
 /**
- * Handles command failures uniformly according to the exit code taxonomy (PLAN.md 2.4):
+ * Handles command failures uniformly according to the exit code taxonomy:
  * - Exit 99: Workspace is locked by another process. Surface with a Retry option.
  * - Exit 98: A previous sync was interrupted. Prompt to run fxv resume or status.
  * - Other: Show error notification with "Show Log".

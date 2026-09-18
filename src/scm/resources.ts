@@ -84,7 +84,7 @@ export const CONFLICT_THEME_COLOR_ID: ThemeColorId = 'gitDecoration.conflictingR
 
 /**
  * Maps a StatusPayload to Conflicts, Unpublished, and Workspace resource groups.
- * Fan-out across axes without deduplication per PLAN.md 3.2.
+ * Fan-out across axes without deduplication.
  * Runs in unit tests without the VS Code runtime.
  */
 export function mapStatusToResourceDescriptors(status: StatusPayload): ResourceGroupsDescriptor {

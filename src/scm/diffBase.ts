@@ -29,7 +29,7 @@ function resolveLocalThenPublished(head: HeadCommit | undefined): string | undef
 }
 
 /**
- * Resolves the base revision spec to diff a file against, according to its axis (PLAN.md 5.3):
+ * Resolves the base revision spec to diff a file against, according to its axis:
  * - Workspace axis (pending snapshot): diff against local snapshot first, falling back to published head.
  * - Unpublished axis: diff against published head first, falling back to local snapshot (unparented draft or new branch).
  * - Conflicts: prefer published head, falling back to local snapshot.
@@ -68,7 +68,7 @@ export function resolveDiffBaseRevision(options: {
 }
 
 /**
- * Resolves the base revision spec for Quick Diff gutter indicators (PLAN.md 5.2, 6.2).
+ * Resolves the base revision spec for Quick Diff gutter indicators.
  * Resolves to published base (head_commit.published_head), falling back to local snapshot
  * on unparented drafts or empty branches.
  */

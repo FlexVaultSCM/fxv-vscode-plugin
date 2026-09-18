@@ -33,7 +33,7 @@ function resolveDiffTarget(
 }
 
 /**
- * Command to diff a file against its base revision (PLAN.md 5.3).
+ * Command to diff a file against its base revision.
  * Axis-aware base selection:
  * - Workspace changes -> local snapshot first, then published head.
  * - Unpublished changes -> published head first, then local snapshot.
@@ -104,7 +104,7 @@ export async function diffAgainstBaseCommand(
 }
 
 /**
- * Command to purge the on-disk and in-memory content cache on demand (PLAN.md 5.2).
+ * Command to purge the on-disk and in-memory content cache on demand.
  */
 export async function clearCacheCommand(ctx: CommandContext): Promise<void> {
   if (ctx.contentCache) {
