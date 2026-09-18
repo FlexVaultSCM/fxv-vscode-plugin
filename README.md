@@ -66,7 +66,8 @@ The status bar displays the active branch, revisions behind remote, and current 
 ## Prerequisites
 
 - **VS Code**: Version `1.85.0` or newer.
-- **FlexVault CLI**: `fxv` installed and accessible on your system `PATH` or configured via the `flexvault.cliPath` setting. The extension checks CLI compatibility at startup.
+- **FlexVault CLI**: `fxv` (version `0.9.0` or newer, compatible up to `< 0.11.0`).
+  - The CLI must be accessible on your system `PATH` or configured via the `flexvault.cliPath` setting.
   - On Windows, install via the official installer; on macOS/Linux, install via standard package paths or Cargo.
 
 ---
