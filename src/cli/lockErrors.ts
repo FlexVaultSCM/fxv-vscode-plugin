@@ -23,8 +23,8 @@ const TIMESTAMP = /Timestamp:\s*([^,)]+)/i;
 
 /**
  * Pulls the holder out of the error message. The exit code says the workspace
- * is locked; this is only ever used to name who holds it, so every field is
- * optional and a message in an unexpected shape yields an empty holder rather
+ * is locked; this is only ever used to identify who holds it, so every field is
+ * optional and a message in an unexpected format yields an empty holder rather
  * than an error.
  */
 export function parseLockHolder(message: string): LockHolder {

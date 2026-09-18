@@ -21,7 +21,7 @@ function interruptedSyncPayload(error: ErrorPayload): InterruptedSyncPayload | u
 
 /**
  * Owns the interrupted-operation banner. Detection is free:
- * any `status` returning exit 98 carries the detail this renders. The banner
+ * any `status` returning exit 98 contains the detail this renders. The banner
  * is sticky once shown, since a debounced background `status` keeps
  * re-detecting the same interruption on every file event until it is
  * resolved; `clear()` is what a subsequent successful `status` calls to

@@ -16,7 +16,7 @@ export type ProgramInfo = EnvelopeSchema['program'];
 /**
  * The `message` half of an envelope. Hand-written rather than generated: the
  * schema declares `payload` as a `oneOf` across every command, so the generated
- * shape is an index signature. The payload type comes from the caller, which
+ * type is an index signature. The payload type comes from the caller, which
  * knows which command it ran.
  */
 export interface EnvelopeMessage<TPayload = unknown> {
@@ -156,7 +156,7 @@ export function errorData(payload: ErrorPayload): ErrorData | undefined {
 
 /**
  * Reads the `interrupted-sync` detail, and only that kind. A different kind has
- * a different shape, so the match comes first.
+ * different fields, so the match comes first.
  */
 export function interruptedSync(data: ErrorData): InterruptedSyncPayload | undefined {
   if (data.kind !== 'interrupted-sync' || !isRecord(data.payload)) {

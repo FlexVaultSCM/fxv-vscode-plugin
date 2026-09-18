@@ -218,7 +218,7 @@ describe('HistoryTreeProvider', () => {
   it('moves the Synced badge on the next refresh after goto changes the head, not sync_status', async () => {
     // Regression: sync_status.synced_revision only moves on an actual `fxv
     // sync`, so goto-ing to a draft parented elsewhere must not leave the
-    // badge stuck on whatever was last genuinely synced.
+    // badge stuck on whatever was last synced.
     const commits = {
       ok: true,
       payload: {

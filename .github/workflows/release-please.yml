@@ -74,3 +74,19 @@ jobs:
             "${{ env.asset }}.sha256" \
             --clobber \
             --repo "${{ github.repository }}"
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ secrets.VSCE_PAT != '' }}
+        shell: bash
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          npx vsce publish --packagePath "${{ env.asset }}" --skip-duplicate
+
+      - name: Publish to Open VSX
+        if: ${{ !cancelled() && secrets.OVSX_PAT != '' }}
+        shell: bash
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          npx ovsx publish "${{ env.asset }}" --skip-duplicate

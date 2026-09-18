@@ -159,7 +159,7 @@ describe('error payloads', () => {
   });
 
   it('reads the interrupted-sync detail, as the CLI actually writes it', () => {
-    // Shape captured from fxv 0.9.0 by killing a goto partway.
+    // Fixture captured from fxv 0.9.0 by killing a goto partway.
     const data = {
       kind: 'interrupted-sync',
       version: '1.0',
