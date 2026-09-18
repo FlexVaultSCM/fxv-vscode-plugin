@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 
 import type { FxvCommands } from '../cli/commands';
 import type { Logger } from '../cli/logger';
+import { specFromCommitInfo } from '../cli/revision';
+import type { RunResult } from '../cli/runner';
+import type { StatusPayload } from '../cli/types.generated';
 import { getChangeKindThemeColorId, getChangeKindTooltip } from '../scm/resources';
 import {
   changeFileName,
@@ -51,11 +54,12 @@ export class HistoryTreeProvider
   //
   // Read off head_commit's local_snapshot, not sync_status.synced_revision:
   // that field only moves on an actual `fxv sync` (remote pull bookkeeping),
-  // so it goes stale the moment goto/revert/resolve moves the workspace
-  // somewhere else. local_snapshot.commit.revision is the published parent
-  // of wherever the workspace actually is right now, and every mutation
-  // that changes the head updates it.
-  private syncedRevision: number | undefined;
+  // so it goes stale the moment goto/revert/resolve moves the workspace to a
+  // different draft. local_snapshot is wherever the workspace actually is
+  // right now, draft or published, and every mutation that changes the head
+  // updates it — so a draft the user just switched to is marked too, not
+  // only its published parent.
+  private currentSpec: string | undefined;
 
   constructor(
     private readonly fxv: FxvCommands,
@@ -88,10 +92,7 @@ export class HistoryTreeProvider
       this.fxv.status({ skipRemoteUpdate: true }),
     ]);
 
-    this.syncedRevision =
-      statusResult.ok && statusResult.payload.head_commit.state === 'parented_draft'
-        ? statusResult.payload.head_commit.local_snapshot.commit.revision
-        : undefined;
+    this.currentSpec = this.resolveCurrentSpec(statusResult);
 
     if (!historyResult.ok) {
       this.log?.error(`Failed to load FlexVault history: ${historyResult.message}`);
@@ -105,6 +106,18 @@ export class HistoryTreeProvider
     return commits;
   }
 
+  private resolveCurrentSpec(statusResult: RunResult<StatusPayload>): string | undefined {
+    if (!statusResult.ok) {
+      return undefined;
+    }
+    const head = statusResult.payload.head_commit;
+    // empty_branch has no local_snapshot at all: nothing to mark yet.
+    if (head.state !== 'parented_draft' && head.state !== 'unparented_draft') {
+      return undefined;
+    }
+    return specFromCommitInfo(head.local_snapshot.commit);
+  }
+
   private async loadChanges(element: CommitElement): Promise<ChangeElement[]> {
     const result = await this.fxv.changeinfo(element.spec);
     if (!result.ok) {
@@ -115,7 +128,7 @@ export class HistoryTreeProvider
   }
 
   private commitTreeItem(element: CommitElement): vscode.TreeItem {
-    const info = commitSyncInfo(element, this.syncedRevision);
+    const info = commitSyncInfo(element, this.currentSpec);
     const item = new vscode.TreeItem(
       commitLabel(element.commit),
       vscode.TreeItemCollapsibleState.Collapsed,
@@ -132,21 +145,15 @@ export class HistoryTreeProvider
   }
 
   private commitIcon(info: CommitSyncInfo): vscode.ThemeIcon {
-    if (info.isSynced) {
-      // What the workspace currently has: the published revision it last synced to.
-      return new vscode.ThemeIcon(
-        'check',
-        new vscode.ThemeColor('gitDecoration.addedResourceForeground'),
-      );
-    }
-    if (info.isDraft) {
-      // Snapshotted but not yet published, echoing the SCM view's own color for that state.
-      return new vscode.ThemeIcon(
-        'git-commit',
-        new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
-      );
-    }
-    return new vscode.ThemeIcon('git-commit');
+    // The draft/published color is independent of whether this is the
+    // current entry, so a current draft still reads as unpublished rather
+    // than borrowing the published "Synced" color.
+    const color = info.isDraft
+      ? new vscode.ThemeColor('gitDecoration.modifiedResourceForeground')
+      : info.isSynced
+        ? new vscode.ThemeColor('gitDecoration.addedResourceForeground')
+        : undefined;
+    return new vscode.ThemeIcon(info.isSynced ? 'check' : 'git-commit', color);
   }
 
   private changeTreeItem(element: ChangeElement): vscode.TreeItem {

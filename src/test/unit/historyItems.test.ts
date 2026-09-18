@@ -137,24 +137,30 @@ describe('commitSyncInfo and commitStatusSuffix', () => {
     spec: `main.${revision}.3`,
   });
 
-  it('marks the published revision matching synced_revision as synced', () => {
-    const info = commitSyncInfo(publishedAt(11), 11);
+  it('marks the published revision matching the current head spec as synced', () => {
+    const info = commitSyncInfo(publishedAt(11), 'main.11');
     expect(info).toEqual({ isDraft: false, isSynced: true });
     expect(commitStatusSuffix(info)).toBe(' · Synced');
   });
 
   it('leaves an older published revision unmarked', () => {
-    const info = commitSyncInfo(publishedAt(9), 11);
+    const info = commitSyncInfo(publishedAt(9), 'main.11');
     expect(info).toEqual({ isDraft: false, isSynced: false });
     expect(commitStatusSuffix(info)).toBe('');
   });
 
-  it('is never synced with no known synced_revision', () => {
+  it('is never synced with no known current spec', () => {
     expect(commitSyncInfo(publishedAt(11), undefined).isSynced).toBe(false);
   });
 
-  it('marks a draft as draft, never as synced, even sharing the synced revision as its parent', () => {
-    const info = commitSyncInfo(draftOnParent(11), 11);
+  it('marks the exact draft the workspace is on as synced too, not only its published parent', () => {
+    const info = commitSyncInfo(draftOnParent(11), 'main.11.3');
+    expect(info).toEqual({ isDraft: true, isSynced: true });
+    expect(commitStatusSuffix(info)).toBe(' · Synced');
+  });
+
+  it('leaves a draft that is not the current head as draft, not synced', () => {
+    const info = commitSyncInfo(draftOnParent(11), 'main.11');
     expect(info).toEqual({ isDraft: true, isSynced: false });
     expect(commitStatusSuffix(info)).toBe(' · Draft');
   });

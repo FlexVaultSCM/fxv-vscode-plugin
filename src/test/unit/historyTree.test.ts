@@ -4,13 +4,20 @@ import type { FxvCommands } from '../../cli/commands';
 import type { CommitElement } from '../../providers/historyItems';
 import { HistoryTreeProvider } from '../../providers/historyTree';
 
-/** A parented_draft head whose local_snapshot is parented on `revision`. */
-function parentedHead(revision: number) {
+/**
+ * A parented_draft head whose local_snapshot is a draft on top of `revision`
+ * (main.<revision>.<draftRevision>), unless draftRevision is omitted, in
+ * which case the head sits exactly at the published revision itself.
+ */
+function parentedHead(revision: number, draftRevision?: number) {
   return {
     head_commit: {
       state: 'parented_draft' as const,
       local_snapshot: {
-        commit: { branch: 'main', type: 'draft' as const, revision, draft_revision: 1 },
+        commit:
+          draftRevision === undefined
+            ? { branch: 'main', type: 'published' as const, revision }
+            : { branch: 'main', type: 'draft' as const, revision, draft_revision: draftRevision },
         timestamp_millis_since_epoch_utc: Date.now(),
         author_id: 'u1',
         author_display_name: 'Ada',
@@ -39,12 +46,10 @@ describe('HistoryTreeProvider', () => {
     fxv = {
       history: vi.fn(),
       changeinfo: vi.fn(),
-      status: vi
-        .fn()
-        .mockResolvedValue({
-          ok: true,
-          payload: { head_commit: { state: 'empty_branch', branch: 'main' } },
-        }),
+      status: vi.fn().mockResolvedValue({
+        ok: true,
+        payload: { head_commit: { state: 'empty_branch', branch: 'main' } },
+      }),
     };
     provider = new HistoryTreeProvider(fxv as unknown as FxvCommands, () => 50);
   });
@@ -74,7 +79,7 @@ describe('HistoryTreeProvider', () => {
     expect((children[0] as CommitElement).spec).toBe('main.11');
   });
 
-  it("marks the published revision the workspace's current head is parented on as Synced", async () => {
+  it('marks the published revision as Synced when the head sits exactly there, with no draft', async () => {
     fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11) });
     fxv.history.mockResolvedValue({
       ok: true,
@@ -104,19 +109,61 @@ describe('HistoryTreeProvider', () => {
 
     expect(syncedItem.description).toContain('Synced');
     expect((syncedItem.iconPath as { id: string }).id).toBe('check');
+    expect((syncedItem.iconPath as { color?: { id: string } }).color?.id).toBe(
+      'gitDecoration.addedResourceForeground',
+    );
     expect(notSyncedItem.description).not.toContain('Synced');
     expect((notSyncedItem.iconPath as { id: string }).id).toBe('git-commit');
     expect((notSyncedItem.iconPath as { color?: unknown }).color).toBeUndefined();
   });
 
-  it('marks a draft commit as Draft rather than Synced, even sharing the synced revision as its parent', async () => {
-    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11) });
+  it('marks the exact draft the workspace is on as Synced too, not only its published parent', async () => {
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11, 3) });
     fxv.history.mockResolvedValue({
       ok: true,
       payload: {
         entries: [
           {
             commit: { branch: 'main', type: 'draft', revision: 11, draft_revision: 3 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+          {
+            commit: { branch: 'main', type: 'published', revision: 11 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    });
+
+    const [currentDraft, publishedParent] = (await provider.getChildren()) as CommitElement[];
+    const draftItem = provider.getTreeItem(currentDraft!);
+    const parentItem = provider.getTreeItem(publishedParent!);
+
+    // Still reads as a draft (muted color), but the check icon and "Synced"
+    // wording mark it as exactly where the workspace is, per the user's
+    // report that only the published parent was ever getting the badge.
+    expect(draftItem.description).toContain('Synced');
+    expect((draftItem.iconPath as { id: string }).id).toBe('check');
+    expect((draftItem.iconPath as { color?: { id: string } }).color?.id).toBe(
+      'gitDecoration.modifiedResourceForeground',
+    );
+    expect(parentItem.description).not.toContain('Synced');
+  });
+
+  it('marks an older draft (not the current head) as Draft, not Synced', async () => {
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11, 3) });
+    fxv.history.mockResolvedValue({
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'draft', revision: 11, draft_revision: 1 },
             timestamp_millis_since_epoch_utc: Date.now(),
             author_id: 'u1',
             author_display_name: 'Ada',
@@ -131,6 +178,7 @@ describe('HistoryTreeProvider', () => {
 
     expect(draftItem.description).toContain('Draft');
     expect(draftItem.description).not.toContain('Synced');
+    expect((draftItem.iconPath as { id: string }).id).toBe('git-commit');
     expect((draftItem.iconPath as { color?: { id: string } }).color?.id).toBe(
       'gitDecoration.modifiedResourceForeground',
     );

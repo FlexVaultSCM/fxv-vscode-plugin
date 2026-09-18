@@ -65,14 +65,16 @@ export function commitDescription(element: CommitElement): string {
 export interface CommitSyncInfo {
   /** A snapshot not yet published, as opposed to a published revision. */
   readonly isDraft: boolean;
-  /** The published revision the workspace's current position is parented on. */
+  /** This is exactly where the workspace's head currently sits, draft or published. */
   readonly isSynced: boolean;
 }
 
 /**
- * Classifies a commit against the published revision the workspace's current
- * head is parented on. A draft is never "synced": that revision names the
- * published parent it sits on, not itself.
+ * Classifies a commit against the workspace's current head spec (its
+ * `head_commit.local_snapshot`). A draft can be "synced" here: this marks
+ * wherever the workspace actually is right now, not merely a published
+ * revision, so the draft a user just `goto`'d to is marked, not only its
+ * published parent.
  *
  * Deliberately not `sync_status.synced_revision`: that only moves on an
  * actual `fxv sync` and goes stale the moment goto/revert/resolve moves the
@@ -80,11 +82,10 @@ export interface CommitSyncInfo {
  */
 export function commitSyncInfo(
   element: CommitElement,
-  syncedRevision: number | undefined,
+  currentSpec: string | undefined,
 ): CommitSyncInfo {
   const isDraft = element.commit.commit.type === 'draft';
-  const isSynced =
-    !isDraft && syncedRevision !== undefined && element.commit.commit.revision === syncedRevision;
+  const isSynced = currentSpec !== undefined && element.spec === currentSpec;
   return { isDraft, isSynced };
 }
 
