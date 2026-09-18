@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import type { FxvCommands } from '../cli/commands';
 import type { Logger } from '../cli/logger';
-import { specFromCommitInfo } from '../cli/revision';
+import { specFromCommitInfo, specFromRevision } from '../cli/revision';
 import type { RunResult } from '../cli/runner';
 import type { StatusPayload } from '../cli/types.generated';
 import { getChangeKindThemeColorId, getChangeKindTooltip } from '../scm/resources';
@@ -115,7 +115,16 @@ export class HistoryTreeProvider
     if (head.state !== 'parented_draft' && head.state !== 'unparented_draft') {
       return undefined;
     }
-    return specFromCommitInfo(head.local_snapshot.commit);
+    const commit = head.local_snapshot.commit;
+    // A workspace sitting exactly on a published revision, with no draft
+    // changes, still reports as a draft at draft_revision 0 (the CLI's alias
+    // for its published parent, e.g. main.11.0 for main.11). Collapse that
+    // back to the published spec so it matches the published history entry
+    // instead of comparing two spellings of the same commit as unequal.
+    if (commit.type === 'draft' && commit.draft_revision === 0 && commit.revision !== undefined) {
+      return specFromRevision(commit.branch, commit.revision);
+    }
+    return specFromCommitInfo(commit);
   }
 
   private async loadChanges(element: CommitElement): Promise<ChangeElement[]> {

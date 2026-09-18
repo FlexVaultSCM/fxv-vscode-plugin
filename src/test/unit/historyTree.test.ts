@@ -6,18 +6,17 @@ import { HistoryTreeProvider } from '../../providers/historyTree';
 
 /**
  * A parented_draft head whose local_snapshot is a draft on top of `revision`
- * (main.<revision>.<draftRevision>), unless draftRevision is omitted, in
- * which case the head sits exactly at the published revision itself.
+ * (main.<revision>.<draftRevision>). Omitting draftRevision defaults to 0,
+ * which is what the workspace actually reports when the head sits exactly at
+ * the published revision with no draft changes: the CLI's own alias for its
+ * published parent (main.<revision>.0), not a `type: 'published'` commit.
  */
-function parentedHead(revision: number, draftRevision?: number) {
+function parentedHead(revision: number, draftRevision = 0) {
   return {
     head_commit: {
       state: 'parented_draft' as const,
       local_snapshot: {
-        commit:
-          draftRevision === undefined
-            ? { branch: 'main', type: 'published' as const, revision }
-            : { branch: 'main', type: 'draft' as const, revision, draft_revision: draftRevision },
+        commit: { branch: 'main', type: 'draft' as const, revision, draft_revision: draftRevision },
         timestamp_millis_since_epoch_utc: Date.now(),
         author_id: 'u1',
         author_display_name: 'Ada',
@@ -115,6 +114,38 @@ describe('HistoryTreeProvider', () => {
     expect(notSyncedItem.description).not.toContain('Synced');
     expect((notSyncedItem.iconPath as { id: string }).id).toBe('git-commit');
     expect((notSyncedItem.iconPath as { color?: unknown }).color).toBeUndefined();
+  });
+
+  it('collapses a clean sync (draft_revision 0, the CLI alias for its published parent) to the published spec', async () => {
+    // Regression: local_snapshot reports type 'draft', draft_revision 0 even
+    // with zero local changes, since get_workspace_head_commit_state always
+    // treats the current branch as a draft branch. Comparing that spec
+    // (main.11.0) against the published history entry's spec (main.11) by
+    // exact string equality left a clean published sync permanently unmarked.
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11) });
+    fxv.history.mockResolvedValue({
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'published', revision: 11 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    });
+
+    const [commit] = (await provider.getChildren()) as CommitElement[];
+    const item = provider.getTreeItem(commit!);
+
+    expect(item.description).toContain('Synced');
+    expect((item.iconPath as { id: string }).id).toBe('check');
+    expect((item.iconPath as { color?: { id: string } }).color?.id).toBe(
+      'gitDecoration.addedResourceForeground',
+    );
   });
 
   it('marks the exact draft the workspace is on as Synced too, not only its published parent', async () => {
