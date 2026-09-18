@@ -288,11 +288,11 @@
         },
         {
           "command": "flexvault.resume",
-          "when": "false"
+          "when": "flexvault.enabled && flexvault.interrupted"
         },
         {
           "command": "flexvault.resumeRollback",
-          "when": "false"
+          "when": "flexvault.enabled && flexvault.interrupted"
         },
         {
           "command": "flexvault.resolveMine",

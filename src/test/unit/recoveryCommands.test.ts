@@ -92,4 +92,47 @@ describe('resumeCommand', () => {
       'Show Log',
     );
   });
+
+  it('warns when resume completes with unresolved conflicts', async () => {
+    const harness = createHarness();
+    vi.spyOn(harness.ctx.fxv, 'resume').mockResolvedValue({
+      ok: true,
+      payload: {
+        target_revision: 'main.10',
+        files_updated_count: 2,
+        error_count: 0,
+        files_updated: [],
+        conflicted_files: ['file1.txt', 'file2.txt'],
+      },
+      text: '',
+    });
+    const warnSpy = vi.spyOn(vscode.window, 'showWarningMessage');
+
+    await resumeCommand(harness.ctx, 'continue');
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Finished with 2 unresolved conflicts'),
+    );
+  });
+
+  it('warns when resume completes with failed file updates', async () => {
+    const harness = createHarness();
+    vi.spyOn(harness.ctx.fxv, 'resume').mockResolvedValue({
+      ok: true,
+      payload: {
+        target_revision: 'main.10',
+        files_updated_count: 3,
+        error_count: 1,
+        files_updated: [],
+      },
+      text: '',
+    });
+    const warnSpy = vi.spyOn(vscode.window, 'showWarningMessage');
+
+    await resumeCommand(harness.ctx, 'rollback');
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Undone. Now at main.10. 3 updated, 1 failed to update.'),
+    );
+  });
 });

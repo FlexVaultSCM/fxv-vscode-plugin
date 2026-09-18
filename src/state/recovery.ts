@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { interruptedSync } from '../cli/envelope';
 import type { ErrorPayload, InterruptedSyncPayload } from '../cli/types.generated';
 
 export interface RecoveryManagerOptions {
@@ -12,10 +13,10 @@ export interface RecoveryManagerOptions {
 }
 
 function interruptedSyncPayload(error: ErrorPayload): InterruptedSyncPayload | undefined {
-  if (error.error_data?.kind !== 'interrupted-sync') {
+  if (!error.error_data) {
     return undefined;
   }
-  return error.error_data.payload as InterruptedSyncPayload;
+  return interruptedSync(error.error_data);
 }
 
 /**
@@ -47,6 +48,11 @@ export class RecoveryManager {
     void this.showBanner(error.message);
   }
 
+  /** Reset the banner-shown latch, allowing the banner to surface on the next check. */
+  resetBanner(): void {
+    this.bannerShown = false;
+  }
+
   /** Call whenever `status` succeeds: the workspace is no longer interrupted. */
   clear(): void {
     this.latest = undefined;
@@ -60,8 +66,11 @@ export class RecoveryManager {
     if (!payload) {
       // error_data was missing or unrecognized; fall back to the raw message
       // rather than rendering a banner with nothing to say.
-      await showWarning(fallbackMessage, 'Show Log');
-      this.options.showLog?.();
+      const action = await showWarning(fallbackMessage, 'Show Log');
+      if (action === 'Show Log') {
+        this.bannerShown = false;
+        this.options.showLog?.();
+      }
       return;
     }
 
@@ -72,6 +81,7 @@ export class RecoveryManager {
         'Show Log',
       );
       if (action === 'Show Log') {
+        this.bannerShown = false;
         this.options.showLog?.();
       }
       return;
@@ -92,6 +102,7 @@ export class RecoveryManager {
       this.bannerShown = false;
       this.options.executeCommand?.('flexvault.resumeRollback');
     } else if (action === 'Show Log') {
+      this.bannerShown = false;
       this.options.showLog?.();
     }
   }

@@ -249,6 +249,7 @@ export function activate(context: vscode.ExtensionContext): void {
       log?.show();
     }),
     vscode.commands.registerCommand('flexvault.refresh', async () => {
+      recoveryManager.resetBanner();
       if (statusCache) {
         await statusCache.refresh({ skipRemoteUpdate: false });
       }

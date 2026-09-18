@@ -36,11 +36,22 @@ export async function resumeCommand(
     return;
   }
 
-  void vscode.window.showInformationMessage(
-    mode === 'continue'
-      ? `Finished. Now at ${result.payload.target_revision}.`
-      : `Undone. Now at ${result.payload.target_revision}.`,
-  );
+  const conflicts = result.payload.conflicted_files;
+  if (conflicts && conflicts.length > 0) {
+    void vscode.window.showWarningMessage(
+      `${mode === 'continue' ? 'Finished' : 'Undone'} with ${conflicts.length} unresolved conflict${conflicts.length === 1 ? '' : 's'}. Please resolve them in the Conflicts group.`,
+    );
+  } else if (result.payload.error_count > 0) {
+    void vscode.window.showWarningMessage(
+      `${mode === 'continue' ? 'Finished' : 'Undone'}. Now at ${result.payload.target_revision}. ${result.payload.files_updated_count} updated, ${result.payload.error_count} failed to update.`,
+    );
+  } else {
+    void vscode.window.showInformationMessage(
+      mode === 'continue'
+        ? `Finished. Now at ${result.payload.target_revision}.`
+        : `Undone. Now at ${result.payload.target_revision}.`,
+    );
+  }
 
   await ctx.statusCache?.refresh({ skipRemoteUpdate: true });
 }

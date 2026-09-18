@@ -138,4 +138,72 @@ describe('RecoveryManager', () => {
 
     expect(showWarningMessage).toHaveBeenCalledTimes(2);
   });
+
+  it('allows the banner to show again after resetBanner()', async () => {
+    const showWarningMessage = vi.fn().mockResolvedValue(undefined);
+    const manager = new RecoveryManager({ showWarningMessage });
+
+    manager.handleInterrupted(recoverableError());
+    await Promise.resolve();
+    await Promise.resolve();
+    manager.resetBanner();
+    manager.handleInterrupted(recoverableError());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(showWarningMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('resets bannerShown when Show Log is clicked so subsequent checks can notify', async () => {
+    const showLog = vi.fn();
+    const showWarningMessage = vi.fn().mockResolvedValue('Show Log');
+    const manager = new RecoveryManager({ showWarningMessage, showLog });
+
+    manager.handleInterrupted(recoverableError());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(showLog).toHaveBeenCalledTimes(1);
+
+    manager.handleInterrupted(recoverableError());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(showWarningMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('only calls showLog on fallback when user chooses Show Log', async () => {
+    const showLog = vi.fn();
+    const showWarningMessage = vi.fn().mockResolvedValue(undefined);
+    const manager = new RecoveryManager({ showWarningMessage, showLog });
+
+    manager.handleInterrupted({ message: 'Sync interrupted', exit_code: 98 });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(showWarningMessage).toHaveBeenCalledWith('Sync interrupted', 'Show Log');
+    expect(showLog).not.toHaveBeenCalled();
+  });
+
+  it('falls back to message when error_data payload is malformed', async () => {
+    let seenMessage = '';
+    const manager = new RecoveryManager({
+      showWarningMessage: (message) => {
+        seenMessage = message;
+        return Promise.resolve(undefined);
+      },
+    });
+
+    const malformed = {
+      message: 'Interrupted',
+      exit_code: 98,
+      error_data: { kind: 'interrupted-sync', version: '1.0', payload: { state: 'invalid-state' } },
+    } as unknown as ErrorPayload;
+
+    manager.handleInterrupted(malformed);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(seenMessage).toBe('Interrupted');
+  });
 });
