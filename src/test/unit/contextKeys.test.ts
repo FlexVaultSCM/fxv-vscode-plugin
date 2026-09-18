@@ -31,6 +31,9 @@ describe('ContextKeys', () => {
 
     await contextKeys.setCliIncompatible(true);
     expect(keys['flexvault.cliIncompatible']).toBe(true);
+
+    await contextKeys.setCliNotFound(true);
+    expect(keys['flexvault.cliNotFound']).toBe(true);
   });
 
   it('derives context keys from status with logged-in user and conflicts', async () => {

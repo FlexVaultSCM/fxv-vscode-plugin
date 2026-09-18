@@ -10,6 +10,7 @@ import {
   historyShowChangesCommand,
 } from './history';
 import { publishCommand } from './publish';
+import { resumeCommand } from './recovery';
 import { resolveCommand } from './resolve';
 import { revertCommand } from './revert';
 import { syncCommand } from './sync';
@@ -73,6 +74,14 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
 
     vscode.commands.registerCommand('flexvault.logout', async () => {
       await logoutCommand(ctxProvider());
+    }),
+
+    vscode.commands.registerCommand('flexvault.resume', async () => {
+      await resumeCommand(ctxProvider(), 'continue');
+    }),
+
+    vscode.commands.registerCommand('flexvault.resumeRollback', async () => {
+      await resumeCommand(ctxProvider(), 'rollback');
     }),
 
     vscode.commands.registerCommand('flexvault.openSettings', async () => {

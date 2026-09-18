@@ -215,6 +215,24 @@ describe('runJson', () => {
     expect(result).toMatchObject({ ok: false, failure: 'version' });
   });
 
+  it('reports the version verdict on every call, including once it recovers', async () => {
+    const verdicts: boolean[] = [];
+    const blockedRunner = runnerFor(
+      printing(envelope('status', { current_branch: 'main' }, { programVersion: '0.4.0' })),
+      { onVersionVerdict: (blocked) => verdicts.push(blocked) },
+    );
+    await blockedRunner.runJson(READ);
+    expect(verdicts).toEqual([true]);
+
+    const guard = new VersionGuard();
+    const okRunner = runnerFor(printing(envelope('status', { current_branch: 'main' })), {
+      versionGuard: guard,
+      onVersionVerdict: (blocked) => verdicts.push(blocked),
+    });
+    await okRunner.runJson(READ);
+    expect(verdicts).toEqual([true, false]);
+  });
+
   it('accepts an out-of-range fixture when the guard is injected', async () => {
     const runner = runnerFor(
       printing(envelope('status', { current_branch: 'main' }, { programVersion: '0.4.0' })),

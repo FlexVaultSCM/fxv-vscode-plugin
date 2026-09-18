@@ -49,6 +49,10 @@ export class ContextKeys {
     await this.updateKey('flexvault.cliIncompatible', incompatible);
   }
 
+  async setCliNotFound(notFound: boolean): Promise<void> {
+    await this.updateKey('flexvault.cliNotFound', notFound);
+  }
+
   /**
    * Derive context keys from the latest status snapshot.
    * Null or undefined status resets status-derived keys to their safe defaults.
