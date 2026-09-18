@@ -81,12 +81,12 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          npx vsce publish --packagePath "${{ env.asset }}" -p "$VSCE_PAT"
+          npx vsce publish --packagePath "${{ env.asset }}" --skip-duplicate
 
       - name: Publish to Open VSX
-        if: ${{ secrets.OVSX_PAT != '' }}
+        if: ${{ !cancelled() && secrets.OVSX_PAT != '' }}
         shell: bash
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
-          npx ovsx publish "${{ env.asset }}" -p "$OVSX_PAT"
+          npx ovsx publish "${{ env.asset }}" --skip-duplicate
