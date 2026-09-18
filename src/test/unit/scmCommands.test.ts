@@ -1,14 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 
 import { loginCommand, logoutCommand } from '../../commands/auth';
 import { gotoCommand } from '../../commands/goto';
 import { resolveCommand } from '../../commands/resolve';
 import { revertCommand } from '../../commands/revert';
+import { snapshotCommand } from '../../commands/snapshot';
 import { syncCommand } from '../../commands/sync';
 import type { CommandContext } from '../../commands/types';
 import type { FxvCommands } from '../../cli/commands';
 import type { StatusCache } from '../../state/statusCache';
+import * as safetyGuards from '../../state/safetyGuards';
 import type { FlexVaultResourceState, FlexVaultScmProvider } from '../../scm/provider';
 
 function createMockHarness() {
@@ -139,6 +141,109 @@ function createMockHarness() {
     stateStore,
   };
 }
+
+describe('snapshotCommand', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('omits the description when the input box is empty', async () => {
+    const harness = createMockHarness();
+    await snapshotCommand(harness.ctx);
+
+    expect(harness.snapshotCalls).toEqual([undefined]);
+    expect(harness.refreshes.length).toBe(1);
+  });
+
+  it('uses and clears the SCM input box description', async () => {
+    const harness = createMockHarness();
+    harness.inputBox.value = 'wip textures';
+
+    await snapshotCommand(harness.ctx);
+
+    expect(harness.snapshotCalls).toEqual(['wip textures']);
+    expect(harness.inputBox.value).toBe('');
+  });
+
+  it('handles exit 99 lock contention', async () => {
+    const harness = createMockHarness();
+    vi.spyOn(harness.ctx.fxv, 'snapshot').mockResolvedValue({
+      ok: false,
+      failure: 'error-envelope',
+      message: "Workspace is locked by another process (PID: 1234, Command: 'fxv.exe').",
+      exitCode: 99,
+      exitClass: 'locked',
+      raw: '',
+    });
+
+    const warnSpy = vi.spyOn(vscode.window, 'showWarningMessage');
+    await snapshotCommand(harness.ctx);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('locked by fxv (PID 1234)'),
+      'Retry',
+      'Show Log',
+    );
+  });
+
+  it('omits the description when the input box is whitespace only', async () => {
+    const harness = createMockHarness();
+    harness.inputBox.value = '   ';
+    await snapshotCommand(harness.ctx);
+
+    expect(harness.snapshotCalls).toEqual([undefined]);
+    expect(harness.refreshes.length).toBe(1);
+  });
+
+  it('uses explicit description without clearing the SCM input box', async () => {
+    const harness = createMockHarness();
+    harness.inputBox.value = 'draft publish message';
+    await snapshotCommand(harness.ctx, 'checkpoint-1');
+
+    expect(harness.snapshotCalls).toEqual(['checkpoint-1']);
+    expect(harness.inputBox.value).toBe('draft publish message');
+    expect(harness.refreshes.length).toBe(1);
+  });
+
+  it('shows error message when rootUri is missing', async () => {
+    const harness = createMockHarness();
+    const errorSpy = vi.spyOn(vscode.window, 'showErrorMessage');
+    await snapshotCommand({ ...harness.ctx, rootUri: undefined });
+
+    expect(errorSpy).toHaveBeenCalledWith('No FlexVault workspace is currently open.');
+    expect(harness.snapshotCalls.length).toBe(0);
+  });
+
+  it('aborts when assertSafeToMutate returns false', async () => {
+    const harness = createMockHarness();
+    const guardSpy = vi.spyOn(safetyGuards, 'assertSafeToMutate').mockResolvedValue(false);
+    try {
+      await snapshotCommand(harness.ctx);
+      expect(harness.snapshotCalls.length).toBe(0);
+    } finally {
+      guardSpy.mockRestore();
+    }
+  });
+
+  it('handles general failure and preserves SCM input box', async () => {
+    const harness = createMockHarness();
+    harness.inputBox.value = 'keep this text';
+    vi.spyOn(harness.ctx.fxv, 'snapshot').mockResolvedValue({
+      ok: false,
+      failure: 'died',
+      message: 'Unexpected error occurred',
+      exitCode: 1,
+      exitClass: 'general',
+      raw: '',
+    });
+
+    const errorSpy = vi.spyOn(vscode.window, 'showErrorMessage');
+    await snapshotCommand(harness.ctx);
+
+    expect(errorSpy).toHaveBeenCalledWith('Snapshot failed: Unexpected error occurred', 'Show Log');
+    expect(harness.inputBox.value).toBe('keep this text');
+  });
+});
 
 describe('syncCommand', () => {
   it('runs sync and refreshes status', async () => {

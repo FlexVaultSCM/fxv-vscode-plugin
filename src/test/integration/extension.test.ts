@@ -20,6 +20,7 @@ suite('extension activation', () => {
       'flexvault.showLog',
       'flexvault.refresh',
       'flexvault.publish',
+      'flexvault.snapshot',
       'flexvault.sync',
       'flexvault.goto',
       'flexvault.revert',
@@ -47,13 +48,17 @@ suite('extension activation', () => {
     assert.ok(extension);
     await extension.activate();
 
-    // Invoking sync and publish with mock SCM arguments or undefined should not throw TypeErrors
+    // Invoking sync, publish, and snapshot with mock SCM arguments or undefined should not throw TypeErrors
     await assert.doesNotReject(async () => {
       await vscode.commands.executeCommand('flexvault.sync', { id: 'flexvault' });
     });
 
     await assert.doesNotReject(async () => {
       await vscode.commands.executeCommand('flexvault.publish', { id: 'flexvault' });
+    });
+
+    await assert.doesNotReject(async () => {
+      await vscode.commands.executeCommand('flexvault.snapshot', { id: 'flexvault' });
     });
   });
 });

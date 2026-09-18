@@ -13,6 +13,7 @@ import { publishCommand } from './publish';
 import { resumeCommand } from './recovery';
 import { resolveCommand } from './resolve';
 import { revertCommand } from './revert';
+import { snapshotCommand } from './snapshot';
 import { syncCommand } from './sync';
 import type { CommandContext } from './types';
 
@@ -32,6 +33,11 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
     vscode.commands.registerCommand('flexvault.publish', async (...args: unknown[]) => {
       const desc = typeof args[0] === 'string' ? args[0] : undefined;
       await publishCommand(ctxProvider(), desc);
+    }),
+
+    vscode.commands.registerCommand('flexvault.snapshot', async (...args: unknown[]) => {
+      const desc = typeof args[0] === 'string' ? args[0] : undefined;
+      await snapshotCommand(ctxProvider(), desc);
     }),
 
     vscode.commands.registerCommand('flexvault.sync', async (...args: unknown[]) => {
