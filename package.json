@@ -5,6 +5,12 @@
   "version": "0.4.0",
   "publisher": "flexvault",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0B1528",
+    "theme": "dark"
+  },
+  "pricing": "Free",
   "private": true,
   "repository": {
     "type": "git",
@@ -27,7 +33,12 @@
     "fxv",
     "source control",
     "scm",
-    "version control"
+    "version control",
+    "vcs",
+    "game dev",
+    "gamedev",
+    "perforce",
+    "git"
   ],
   "extensionKind": [
     "workspace"
