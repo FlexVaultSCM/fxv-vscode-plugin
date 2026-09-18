@@ -62,6 +62,38 @@ export function commitDescription(element: CommitElement): string {
   return `${element.commit.author_display_name} · ${formatRelativeTime(element.commit.timestamp_millis_since_epoch_utc)} · ${element.spec}`;
 }
 
+export interface CommitSyncInfo {
+  /** A snapshot not yet published, as opposed to a published revision. */
+  readonly isDraft: boolean;
+  /** The published revision the workspace is currently synced to. */
+  readonly isSynced: boolean;
+}
+
+/**
+ * Classifies a commit against the workspace's `sync_status.synced_revision`.
+ * A draft is never "synced": that field names a published revision, and a
+ * draft's own `revision` is the published parent it sits on, not itself.
+ */
+export function commitSyncInfo(
+  element: CommitElement,
+  syncedRevision: number | undefined,
+): CommitSyncInfo {
+  const isDraft = element.commit.commit.type === 'draft';
+  const isSynced =
+    !isDraft && syncedRevision !== undefined && element.commit.commit.revision === syncedRevision;
+  return { isDraft, isSynced };
+}
+
+export function commitStatusSuffix(info: CommitSyncInfo): string {
+  if (info.isSynced) {
+    return ' · Synced';
+  }
+  if (info.isDraft) {
+    return ' · Draft';
+  }
+  return '';
+}
+
 export function commitTooltip(element: CommitElement): string {
   const { commit } = element;
   const lines = [

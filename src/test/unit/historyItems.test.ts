@@ -8,6 +8,8 @@ import {
   commitDescription,
   commitLabel,
   commitsFromHistoryPayload,
+  commitStatusSuffix,
+  commitSyncInfo,
   commitTooltip,
   formatRelativeTime,
 } from '../../providers/historyItems';
@@ -117,6 +119,44 @@ describe('commitDescription and commitTooltip', () => {
     };
 
     expect(commitTooltip(element)).toContain('no such user');
+  });
+});
+
+describe('commitSyncInfo and commitStatusSuffix', () => {
+  const publishedAt = (revision: number): CommitElement => ({
+    kind: 'commit',
+    commit: commitRef({ commit: { branch: 'main', type: 'published', revision } }),
+    spec: `main.${revision}`,
+  });
+
+  const draftOnParent = (revision: number): CommitElement => ({
+    kind: 'commit',
+    commit: commitRef({
+      commit: { branch: 'main', type: 'draft', revision, draft_revision: 3 },
+    }),
+    spec: `main.${revision}.3`,
+  });
+
+  it('marks the published revision matching synced_revision as synced', () => {
+    const info = commitSyncInfo(publishedAt(11), 11);
+    expect(info).toEqual({ isDraft: false, isSynced: true });
+    expect(commitStatusSuffix(info)).toBe(' · Synced');
+  });
+
+  it('leaves an older published revision unmarked', () => {
+    const info = commitSyncInfo(publishedAt(9), 11);
+    expect(info).toEqual({ isDraft: false, isSynced: false });
+    expect(commitStatusSuffix(info)).toBe('');
+  });
+
+  it('is never synced with no known synced_revision', () => {
+    expect(commitSyncInfo(publishedAt(11), undefined).isSynced).toBe(false);
+  });
+
+  it('marks a draft as draft, never as synced, even sharing the synced revision as its parent', () => {
+    const info = commitSyncInfo(draftOnParent(11), 11);
+    expect(info).toEqual({ isDraft: true, isSynced: false });
+    expect(commitStatusSuffix(info)).toBe(' · Draft');
   });
 });
 

@@ -5,11 +5,19 @@ import type { CommitElement } from '../../providers/historyItems';
 import { HistoryTreeProvider } from '../../providers/historyTree';
 
 describe('HistoryTreeProvider', () => {
-  let fxv: { history: ReturnType<typeof vi.fn>; changeinfo: ReturnType<typeof vi.fn> };
+  let fxv: {
+    history: ReturnType<typeof vi.fn>;
+    changeinfo: ReturnType<typeof vi.fn>;
+    status: ReturnType<typeof vi.fn>;
+  };
   let provider: HistoryTreeProvider;
 
   beforeEach(() => {
-    fxv = { history: vi.fn(), changeinfo: vi.fn() };
+    fxv = {
+      history: vi.fn(),
+      changeinfo: vi.fn(),
+      status: vi.fn().mockResolvedValue({ ok: true, payload: { sync_status: undefined } }),
+    };
     provider = new HistoryTreeProvider(fxv as unknown as FxvCommands, () => 50);
   });
 
@@ -33,8 +41,95 @@ describe('HistoryTreeProvider', () => {
     const children = await provider.getChildren();
 
     expect(fxv.history).toHaveBeenCalledWith({ count: 50 });
+    expect(fxv.status).toHaveBeenCalledWith({ skipRemoteUpdate: true });
     expect(children).toHaveLength(1);
     expect((children[0] as CommitElement).spec).toBe('main.11');
+  });
+
+  it('marks the published revision matching sync_status.synced_revision as Synced', async () => {
+    fxv.status.mockResolvedValue({ ok: true, payload: { sync_status: { synced_revision: 11 } } });
+    fxv.history.mockResolvedValue({
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'published', revision: 11 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+          {
+            commit: { branch: 'main', type: 'published', revision: 9 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    });
+
+    const [synced, notSynced] = (await provider.getChildren()) as CommitElement[];
+    const syncedItem = provider.getTreeItem(synced!);
+    const notSyncedItem = provider.getTreeItem(notSynced!);
+
+    expect(syncedItem.description).toContain('Synced');
+    expect((syncedItem.iconPath as { id: string }).id).toBe('check');
+    expect(notSyncedItem.description).not.toContain('Synced');
+    expect((notSyncedItem.iconPath as { id: string }).id).toBe('git-commit');
+    expect((notSyncedItem.iconPath as { color?: unknown }).color).toBeUndefined();
+  });
+
+  it('marks a draft commit as Draft rather than Synced, even sharing the synced revision as its parent', async () => {
+    fxv.status.mockResolvedValue({ ok: true, payload: { sync_status: { synced_revision: 11 } } });
+    fxv.history.mockResolvedValue({
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'draft', revision: 11, draft_revision: 3 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    });
+
+    const [draft] = (await provider.getChildren()) as CommitElement[];
+    const draftItem = provider.getTreeItem(draft!);
+
+    expect(draftItem.description).toContain('Draft');
+    expect(draftItem.description).not.toContain('Synced');
+    expect((draftItem.iconPath as { color?: { id: string } }).color?.id).toBe(
+      'gitDecoration.modifiedResourceForeground',
+    );
+  });
+
+  it('leaves the description and icon plain when the status read fails', async () => {
+    fxv.status.mockResolvedValue({ ok: false, message: 'boom', exitCode: 1 });
+    fxv.history.mockResolvedValue({
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'published', revision: 11 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    });
+
+    const [commit] = (await provider.getChildren()) as CommitElement[];
+    const item = provider.getTreeItem(commit!);
+
+    expect(item.description).not.toContain('Synced');
+    expect((item.iconPath as { color?: unknown }).color).toBeUndefined();
   });
 
   it('returns no commits when history fails, rather than throwing', async () => {

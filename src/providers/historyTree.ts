@@ -10,7 +10,10 @@ import {
   commitDescription,
   type CommitElement,
   commitLabel,
+  commitStatusSuffix,
   commitsFromHistoryPayload,
+  type CommitSyncInfo,
+  commitSyncInfo,
   commitTooltip,
   type HistoryTreeElement,
 } from './historyItems';
@@ -34,6 +37,12 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
   // Keyed by revision spec so getParent (required by TreeView.reveal) can
   // find a change leaf's owning commit without re-fetching it.
   private readonly commitsBySpec = new Map<string, CommitElement>();
+
+  // Refetched alongside the commit list itself (loadCommits), rather than
+  // read from the shared StatusCache, so the "Synced" marker is always
+  // current as of the last tree refresh instead of racing a mutation's own
+  // follow-up status refresh.
+  private syncedRevision: number | undefined;
 
   constructor(
     private readonly fxv: FxvCommands,
@@ -61,12 +70,20 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
   }
 
   private async loadCommits(): Promise<CommitElement[]> {
-    const result = await this.fxv.history({ count: this.getHistoryLimit() });
-    if (!result.ok) {
-      this.log?.error(`Failed to load FlexVault history: ${result.message}`);
+    const [historyResult, statusResult] = await Promise.all([
+      this.fxv.history({ count: this.getHistoryLimit() }),
+      this.fxv.status({ skipRemoteUpdate: true }),
+    ]);
+
+    this.syncedRevision = statusResult.ok
+      ? (statusResult.payload.sync_status?.synced_revision ?? undefined)
+      : undefined;
+
+    if (!historyResult.ok) {
+      this.log?.error(`Failed to load FlexVault history: ${historyResult.message}`);
       return [];
     }
-    const commits = commitsFromHistoryPayload(result.payload);
+    const commits = commitsFromHistoryPayload(historyResult.payload);
     this.commitsBySpec.clear();
     for (const commit of commits) {
       this.commitsBySpec.set(commit.spec, commit);
@@ -84,15 +101,34 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
   }
 
   private commitTreeItem(element: CommitElement): vscode.TreeItem {
+    const info = commitSyncInfo(element, this.syncedRevision);
     const item = new vscode.TreeItem(
       commitLabel(element.commit),
       vscode.TreeItemCollapsibleState.Collapsed,
     );
-    item.description = commitDescription(element);
+    item.description = `${commitDescription(element)}${commitStatusSuffix(info)}`;
     item.tooltip = commitTooltip(element);
     item.contextValue = 'flexvaultHistoryCommit';
-    item.iconPath = new vscode.ThemeIcon('git-commit');
+    item.iconPath = this.commitIcon(info);
     return item;
+  }
+
+  private commitIcon(info: CommitSyncInfo): vscode.ThemeIcon {
+    if (info.isSynced) {
+      // What the workspace currently has: the published revision it last synced to.
+      return new vscode.ThemeIcon(
+        'check',
+        new vscode.ThemeColor('gitDecoration.addedResourceForeground'),
+      );
+    }
+    if (info.isDraft) {
+      // Snapshotted but not yet published, echoing the SCM view's own color for that state.
+      return new vscode.ThemeIcon(
+        'git-commit',
+        new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
+      );
+    }
+    return new vscode.ThemeIcon('git-commit');
   }
 
   private changeTreeItem(element: ChangeElement): vscode.TreeItem {
