@@ -77,7 +77,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const historyProvider = new HistoryTreeProvider(
     fxv,
-    () => numberSetting('historyLimit', 50),
+    () => numberSetting('historyLimit', 50, 1),
     log,
   );
   const historyTreeView = vscode.window.createTreeView<HistoryTreeElement>('flexvaultHistory', {
@@ -99,6 +99,10 @@ export function activate(context: vscode.ExtensionContext): void {
     teardownRoot();
     const primary = roots.primary();
     reportWorkspaceRoot(roots);
+    // History is keyed to the active root's fxv workspace, same as scmProvider
+    // and statusCache below; without this it keeps showing the previous
+    // root's commits until some unrelated event happens to trigger a refresh.
+    historyProvider.refresh();
 
     if (!primary) {
       void contextKeys.setEnabled(false);
@@ -266,9 +270,9 @@ function reportWorkspaceRoot(roots: WorkspaceRoots): void {
   log?.info(`Using the FlexVault workspace at ${root.path}.`);
 }
 
-function numberSetting(name: string, fallback: number): number {
+function numberSetting(name: string, fallback: number, min = 0): number {
   const value = vscode.workspace.getConfiguration('flexvault').get<number>(name);
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+  return typeof value === 'number' && Number.isFinite(value) && value >= min ? value : fallback;
 }
 
 function booleanSetting(name: string, fallback: boolean): boolean {

@@ -2,7 +2,7 @@ import { specFromCommitInfo } from '../cli/revision';
 import type { CommitRef, FileStatus, HeadCommit, StatusPayload } from '../cli/types.generated';
 import type { ResourceGroupType } from './resources';
 
-function getLocalSnapshot(head: HeadCommit | undefined): CommitRef | undefined {
+export function getLocalSnapshot(head: HeadCommit | undefined): CommitRef | undefined {
   if (!head || head.state === 'empty_branch') {
     return undefined;
   }

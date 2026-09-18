@@ -5,6 +5,7 @@ import type { Logger } from '../cli/logger';
 import { specFromCommitInfo, specFromRevision } from '../cli/revision';
 import type { RunResult } from '../cli/runner';
 import type { StatusPayload } from '../cli/types.generated';
+import { getLocalSnapshot } from '../scm/diffBase';
 import { getChangeKindThemeColorId, getChangeKindTooltip } from '../scm/resources';
 import {
   changeFileName,
@@ -110,12 +111,11 @@ export class HistoryTreeProvider
     if (!statusResult.ok) {
       return undefined;
     }
-    const head = statusResult.payload.head_commit;
-    // empty_branch has no local_snapshot at all: nothing to mark yet.
-    if (head.state !== 'parented_draft' && head.state !== 'unparented_draft') {
+    const localSnapshot = getLocalSnapshot(statusResult.payload.head_commit);
+    if (!localSnapshot) {
       return undefined;
     }
-    const commit = head.local_snapshot.commit;
+    const commit = localSnapshot.commit;
     // A workspace sitting exactly on a published revision, with no draft
     // changes, still reports as a draft at draft_revision 0 (the CLI's alias
     // for its published parent, e.g. main.11.0 for main.11). Collapse that
