@@ -299,6 +299,10 @@
         {
           "command": "flexvault.historyCopyRevision",
           "when": "false"
+        },
+        {
+          "command": "flexvault.historyRefresh",
+          "when": "flexvault.enabled"
         }
       ]
     },

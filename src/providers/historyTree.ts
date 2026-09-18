@@ -30,9 +30,15 @@ const CHANGE_KIND_ICON: Record<ChangeElement['action'], string> = {
  * `history -n <historyLimit>` entries; expanding one loads its
  * `changeinfo <spec>` as child leaves, each wired to open a diff.
  */
-export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeElement> {
+export class HistoryTreeProvider
+  implements vscode.TreeDataProvider<HistoryTreeElement>, vscode.Disposable
+{
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<HistoryTreeElement | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+
+  dispose(): void {
+    this._onDidChangeTreeData.dispose();
+  }
 
   // Keyed by revision spec so getParent (required by TreeView.reveal) can
   // find a change leaf's owning commit without re-fetching it.
@@ -42,6 +48,13 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
   // read from the shared StatusCache, so the "Synced" marker is always
   // current as of the last tree refresh instead of racing a mutation's own
   // follow-up status refresh.
+  //
+  // Read off head_commit's local_snapshot, not sync_status.synced_revision:
+  // that field only moves on an actual `fxv sync` (remote pull bookkeeping),
+  // so it goes stale the moment goto/revert/resolve moves the workspace
+  // somewhere else. local_snapshot.commit.revision is the published parent
+  // of wherever the workspace actually is right now, and every mutation
+  // that changes the head updates it.
   private syncedRevision: number | undefined;
 
   constructor(
@@ -75,9 +88,10 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
       this.fxv.status({ skipRemoteUpdate: true }),
     ]);
 
-    this.syncedRevision = statusResult.ok
-      ? (statusResult.payload.sync_status?.synced_revision ?? undefined)
-      : undefined;
+    this.syncedRevision =
+      statusResult.ok && statusResult.payload.head_commit.state === 'parented_draft'
+        ? statusResult.payload.head_commit.local_snapshot.commit.revision
+        : undefined;
 
     if (!historyResult.ok) {
       this.log?.error(`Failed to load FlexVault history: ${historyResult.message}`);
@@ -106,6 +120,10 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
       commitLabel(element.commit),
       vscode.TreeItemCollapsibleState.Collapsed,
     );
+    // A stable id (not object identity, since loadCommits rebuilds elements
+    // on every refresh) is what lets VS Code keep this node's expansion and
+    // selection state across a refresh instead of collapsing it.
+    item.id = element.spec;
     item.description = `${commitDescription(element)}${commitStatusSuffix(info)}`;
     item.tooltip = commitTooltip(element);
     item.contextValue = 'flexvaultHistoryCommit';
@@ -133,6 +151,7 @@ export class HistoryTreeProvider implements vscode.TreeDataProvider<HistoryTreeE
 
   private changeTreeItem(element: ChangeElement): vscode.TreeItem {
     const item = new vscode.TreeItem(changeFileName(element), vscode.TreeItemCollapsibleState.None);
+    item.id = `${element.commitSpec}::${element.path}`;
     item.description = getChangeKindTooltip(element.action);
     item.tooltip = `${element.path} · ${getChangeKindTooltip(element.action)}`;
     item.contextValue = 'flexvaultHistoryChange';

@@ -4,6 +4,29 @@ import type { FxvCommands } from '../../cli/commands';
 import type { CommitElement } from '../../providers/historyItems';
 import { HistoryTreeProvider } from '../../providers/historyTree';
 
+/** A parented_draft head whose local_snapshot is parented on `revision`. */
+function parentedHead(revision: number) {
+  return {
+    head_commit: {
+      state: 'parented_draft' as const,
+      local_snapshot: {
+        commit: { branch: 'main', type: 'draft' as const, revision, draft_revision: 1 },
+        timestamp_millis_since_epoch_utc: Date.now(),
+        author_id: 'u1',
+        author_display_name: 'Ada',
+        author_details: { type: 'Local' as const },
+      },
+      published_head: {
+        commit: { branch: 'main', type: 'published' as const, revision },
+        timestamp_millis_since_epoch_utc: Date.now(),
+        author_id: 'u1',
+        author_display_name: 'Ada',
+        author_details: { type: 'Local' as const },
+      },
+    },
+  };
+}
+
 describe('HistoryTreeProvider', () => {
   let fxv: {
     history: ReturnType<typeof vi.fn>;
@@ -16,7 +39,12 @@ describe('HistoryTreeProvider', () => {
     fxv = {
       history: vi.fn(),
       changeinfo: vi.fn(),
-      status: vi.fn().mockResolvedValue({ ok: true, payload: { sync_status: undefined } }),
+      status: vi
+        .fn()
+        .mockResolvedValue({
+          ok: true,
+          payload: { head_commit: { state: 'empty_branch', branch: 'main' } },
+        }),
     };
     provider = new HistoryTreeProvider(fxv as unknown as FxvCommands, () => 50);
   });
@@ -46,8 +74,8 @@ describe('HistoryTreeProvider', () => {
     expect((children[0] as CommitElement).spec).toBe('main.11');
   });
 
-  it('marks the published revision matching sync_status.synced_revision as Synced', async () => {
-    fxv.status.mockResolvedValue({ ok: true, payload: { sync_status: { synced_revision: 11 } } });
+  it("marks the published revision the workspace's current head is parented on as Synced", async () => {
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11) });
     fxv.history.mockResolvedValue({
       ok: true,
       payload: {
@@ -82,7 +110,7 @@ describe('HistoryTreeProvider', () => {
   });
 
   it('marks a draft commit as Draft rather than Synced, even sharing the synced revision as its parent', async () => {
-    fxv.status.mockResolvedValue({ ok: true, payload: { sync_status: { synced_revision: 11 } } });
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11) });
     fxv.history.mockResolvedValue({
       ok: true,
       payload: {
@@ -106,6 +134,45 @@ describe('HistoryTreeProvider', () => {
     expect((draftItem.iconPath as { color?: { id: string } }).color?.id).toBe(
       'gitDecoration.modifiedResourceForeground',
     );
+  });
+
+  it('moves the Synced badge on the next refresh after goto changes the head, not sync_status', async () => {
+    // Regression: sync_status.synced_revision only moves on an actual `fxv
+    // sync`, so goto-ing to a draft parented elsewhere must not leave the
+    // badge stuck on whatever was last genuinely synced.
+    const commits = {
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'published', revision: 9 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+          {
+            commit: { branch: 'main', type: 'published', revision: 11 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    };
+    fxv.history.mockResolvedValue(commits);
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(9) });
+
+    const [at9] = (await provider.getChildren()) as CommitElement[];
+    expect(provider.getTreeItem(at9!).description).toContain('Synced');
+
+    // goto main.11.* happened; the CLI runner completed and history refreshed.
+    fxv.status.mockResolvedValue({ ok: true, payload: parentedHead(11) });
+    const [, at11] = (await provider.getChildren()) as CommitElement[];
+
+    expect(provider.getTreeItem(at9!).description).not.toContain('Synced');
+    expect(provider.getTreeItem(at11!).description).toContain('Synced');
   });
 
   it('leaves the description and icon plain when the status read fails', async () => {
@@ -245,5 +312,37 @@ describe('HistoryTreeProvider', () => {
     provider.onDidChangeTreeData(listener);
     provider.refresh();
     expect(listener).toHaveBeenCalledWith(undefined);
+  });
+
+  it('gives commit and change items a stable id, so expansion survives a refresh', async () => {
+    fxv.history.mockResolvedValue({
+      ok: true,
+      payload: {
+        entries: [
+          {
+            commit: { branch: 'main', type: 'published', revision: 11 },
+            timestamp_millis_since_epoch_utc: Date.now(),
+            author_id: 'u1',
+            author_display_name: 'Ada',
+            author_details: { type: 'Local' },
+          },
+        ],
+      },
+    });
+    const [commit] = (await provider.getChildren()) as CommitElement[];
+    expect(provider.getTreeItem(commit!).id).toBe('main.11');
+
+    const change = {
+      kind: 'change' as const,
+      commitSpec: 'main.11',
+      path: 'a/b.txt',
+      action: 'added' as const,
+    };
+    expect(provider.getTreeItem(change).id).toBe('main.11::a/b.txt');
+  });
+
+  it('dispose tears down the change-data emitter', () => {
+    provider.dispose();
+    expect(() => provider.refresh()).not.toThrow();
   });
 });

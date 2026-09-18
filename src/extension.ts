@@ -83,7 +83,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const historyTreeView = vscode.window.createTreeView<HistoryTreeElement>('flexvaultHistory', {
     treeDataProvider: historyProvider,
   });
-  context.subscriptions.push(historyTreeView);
+  context.subscriptions.push(historyProvider, historyTreeView);
 
   const teardownRoot = () => {
     for (const d of rootSubscriptions) {
