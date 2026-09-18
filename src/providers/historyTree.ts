@@ -58,7 +58,7 @@ export class HistoryTreeProvider
   // so it goes stale the moment goto/revert/resolve moves the workspace to a
   // different draft. local_snapshot is wherever the workspace actually is
   // right now, draft or published, and every mutation that changes the head
-  // updates it — so a draft the user just switched to is marked too, not
+  // updates it, so a draft the user just switched to is marked too, not
   // only its published parent.
   private currentSpec: string | undefined;
 

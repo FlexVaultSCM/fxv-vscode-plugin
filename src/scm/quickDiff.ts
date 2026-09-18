@@ -6,7 +6,7 @@ import type { StatusCache } from '../state/statusCache';
 import { resolveQuickDiffBaseRevision } from './diffBase';
 
 /**
- * QuickDiffProvider implementation for FlexVault (PLAN.md 5.2).
+ * QuickDiffProvider implementation for FlexVault.
  * Lights up editor gutter indicators by pointing to the published or local snapshot base revision in the fxv: scheme.
  */
 export class FlexVaultQuickDiffProvider implements vscode.QuickDiffProvider {

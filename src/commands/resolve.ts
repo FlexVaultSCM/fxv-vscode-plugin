@@ -30,7 +30,7 @@ export async function resolveCommand(
   let target: ResolveTarget;
 
   if (paths.length > 0) {
-    // resolve --theirs is destructive: warn per PLAN.md 4.3
+    // resolve --theirs is destructive: warn before running it
     if (strategy === 'theirs') {
       const count = paths.length;
       const fileWord = count === 1 ? 'file' : 'files';
