@@ -77,6 +77,11 @@
         "category": "FlexVault"
       },
       {
+        "command": "flexvault.snapshot",
+        "title": "Snapshot",
+        "category": "FlexVault"
+      },
+      {
         "command": "flexvault.sync",
         "title": "Sync",
         "category": "FlexVault"
@@ -177,6 +182,11 @@
           "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.hasConflicts && flexvault.loggedIn"
         },
         {
+          "command": "flexvault.snapshot",
+          "group": "1_main@2",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+        },
+        {
           "command": "flexvault.sync",
           "group": "1_main@3",
           "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
@@ -259,6 +269,10 @@
           "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.hasConflicts && flexvault.loggedIn"
         },
         {
+          "command": "flexvault.snapshot",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+        },
+        {
           "command": "flexvault.sync",
           "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
         },
@@ -333,6 +347,28 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "scm",
+        "contents": "FlexVault CLI was not found on PATH or at the configured path.\n[Open FlexVault CLI Path Setting](command:flexvault.openSettings)",
+        "when": "flexvault.cliNotFound"
+      },
+      {
+        "view": "scm",
+        "contents": "The installed FlexVault CLI version is incompatible with this extension.\n[FlexVault CLI Documentation](command:flexvault.openDocumentation)",
+        "when": "!flexvault.cliNotFound && flexvault.cliIncompatible"
+      },
+      {
+        "view": "scm",
+        "contents": "No FlexVault repository found in the current workspace.\n[FlexVault Setup Documentation](command:flexvault.openDocumentation)",
+        "when": "!flexvault.cliNotFound && !flexvault.cliIncompatible && !flexvault.enabled"
+      },
+      {
+        "view": "flexvaultHistory",
+        "contents": "This branch has no snapshots yet.\n[Create Snapshot](command:flexvault.snapshot)",
+        "when": "flexvault.enabled && !flexvault.cliIncompatible && flexvault.headState == empty_branch"
+      }
+    ],
     "configuration": {
       "title": "FlexVault",
       "properties": {
