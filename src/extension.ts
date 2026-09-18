@@ -11,6 +11,8 @@ import { registerCommands } from './commands';
 import { LINKS, type LinkName } from './links';
 import { ContentCache } from './providers/contentCache';
 import { FxvContentProvider, FXV_SCHEME } from './providers/contentProvider';
+import type { HistoryTreeElement } from './providers/historyItems';
+import { HistoryTreeProvider } from './providers/historyTree';
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
 import { ContextKeys } from './state/contextKeys';
@@ -60,6 +62,11 @@ export function activate(context: vscode.ExtensionContext): void {
     onBusyChanged: (busy) => {
       void contextKeys.setBusy(busy);
       scmProvider?.setBusy(busy);
+      // History only moves on a write command, so refresh once the mutation
+      // queue drains rather than on every debounced status read.
+      if (!busy) {
+        historyProvider.refresh();
+      }
     },
     onPossiblyInterrupted: (reason) => {
       log?.error(`The workspace may be mid-operation: ${reason}. Run fxv status to check.`);
@@ -67,6 +74,16 @@ export function activate(context: vscode.ExtensionContext): void {
     },
   });
   const fxv = new FxvCommands(runner);
+
+  const historyProvider = new HistoryTreeProvider(
+    fxv,
+    () => numberSetting('historyLimit', 50),
+    log,
+  );
+  const historyTreeView = vscode.window.createTreeView<HistoryTreeElement>('flexvaultHistory', {
+    treeDataProvider: historyProvider,
+  });
+  context.subscriptions.push(historyTreeView);
 
   const teardownRoot = () => {
     for (const d of rootSubscriptions) {
@@ -191,6 +208,9 @@ export function activate(context: vscode.ExtensionContext): void {
       ) {
         statusCache?.updateConfiguration();
       }
+      if (event.affectsConfiguration('flexvault.historyLimit')) {
+        historyProvider.refresh();
+      }
     }),
   );
 
@@ -217,6 +237,8 @@ export function activate(context: vscode.ExtensionContext): void {
       statusCache,
       scmProvider,
       contentCache,
+      historyTreeView,
+      historyProvider,
       log,
       context,
       rootUri: roots.primary() ? vscode.Uri.file(roots.primary()!.path) : undefined,
