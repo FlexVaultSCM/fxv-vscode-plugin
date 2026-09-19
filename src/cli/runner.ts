@@ -14,7 +14,9 @@ import {
 import { MutationGate, type GateMode } from './gate';
 import { describeLockHolder, parseLockHolder, type LockHolder } from './lockErrors';
 import type { Logger } from './logger';
-import { VersionGuard } from './versionGuard';
+import { SUPPORTED_CLI_RANGE, VersionGuard } from './versionGuard';
+
+const FXV_CLIENT_ENV = `name=vscode;version=0.4.0;max=${SUPPORTED_CLI_RANGE.ceiling.major}.${SUPPORTED_CLI_RANGE.ceiling.minor}.${SUPPORTED_CLI_RANGE.ceiling.patch};min=${SUPPORTED_CLI_RANGE.floor.major}.${SUPPORTED_CLI_RANGE.floor.minor}.${SUPPORTED_CLI_RANGE.floor.patch}`;
 
 /**
  * Everything that spawns a process. The public surface is typed results, so no
@@ -296,7 +298,10 @@ export class CliRunner {
 
       const child = this.spawn(binary, argv, {
         cwd: cwd ?? undefined,
-        env: this.deps.env ?? process.env,
+        env: {
+          ...(this.deps.env ?? process.env),
+          FXV_CLIENT: FXV_CLIENT_ENV,
+        },
         windowsHide: true,
         // An argv array, never a shell string: paths contain spaces, and a
         // shell would also reinterpret every character in a commit message.
