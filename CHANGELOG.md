@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## [0.5.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.4.0...v0.5.0) (2026-09-20)
+
+
+### Features
+
+* add extension branding and marketplace metadata ([#18](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/18)) ([64e948d](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/64e948d0bdbd07840d3ffe298e16b3e10495b4c9))
+
+
+### Bug Fixes
+
+* bracket-notation needs.release-please references ([#22](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/22)) ([705ea52](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/705ea52bbe1fad8ae98d6f443a217b94564e7137))
+* move secrets check out of step if conditions ([#24](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/24)) ([bd8adc8](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/bd8adc8dd976a684ded139a66901c3f63d7e60b3))
+* rename release-as input to avoid hyphen in expression context ([#23](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/23)) ([ed7d8fc](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/ed7d8fc043ca24994685e53c67a01369a83f6450))
+* repair workflow_dispatch expression and unblock publishing ([#21](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/21)) ([6858df2](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/6858df259848bf7dce611fc856e335afcc0832d8))
+
 ## [0.4.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.3.0...v0.4.0) (2026-09-18)
 
 
