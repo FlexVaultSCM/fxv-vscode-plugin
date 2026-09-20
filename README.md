@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=flexvault.flexvault-vscode">Marketplace</a> ·
+  <a href="https://open-vsx.org/extension/flexvault/flexvault-vscode">Open VSX</a> ·
   <a href="https://fxv.dev">Website</a> ·
   <a href="https://docs.fxv.dev">Documentation</a> ·
   <a href="https://discord.gg/KCMHRQBDf">Discord Community</a>
@@ -74,7 +75,7 @@ The status bar displays the active branch, revisions behind remote, and current 
 
 ## Installation
 
-Install the extension directly from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flexvault.flexvault-vscode):
+Install the extension from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=flexvault.flexvault-vscode) or [Open VSX](https://open-vsx.org/extension/flexvault/flexvault-vscode) (for VS Code-compatible editors such as VSCodium, Cursor, and Windsurf):
 
 ```sh
 code --install-extension flexvault.flexvault-vscode
