@@ -11,7 +11,6 @@
     "theme": "dark"
   },
   "pricing": "Free",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/FlexVaultSCM/fxv-vscode-plugin.git"

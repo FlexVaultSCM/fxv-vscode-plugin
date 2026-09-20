@@ -26,7 +26,7 @@ jobs:
         with:
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
-          release-as: ${{ github.event_name == 'workflow_dispatch' && inputs.release-as || '' }}
+          release-as: ${{ github.event_name == 'workflow_dispatch' && inputs['release-as'] || '' }}
           skip-github-pull-request: ${{ github.event_name == 'push' }}
           skip-github-release: ${{ github.event_name == 'workflow_dispatch' }}
 
