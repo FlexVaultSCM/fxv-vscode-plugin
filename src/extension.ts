@@ -129,7 +129,6 @@ export function activate(context: vscode.ExtensionContext): void {
     void contextKeys.setEnabled(true);
     void contextKeys.setCliIncompatible(versionGuard.blocked);
     const rootUri = vscode.Uri.file(primary.path);
-    const repoName = primary.folder.name || path.basename(primary.path);
 
     decorationProvider = new FlexVaultDecorationProvider();
     rootSubscriptions.push(vscode.window.registerFileDecorationProvider(decorationProvider));
@@ -175,7 +174,7 @@ export function activate(context: vscode.ExtensionContext): void {
         void contextKeys.updateFromStatus(status);
         if (status) {
           scmProvider?.setError(false);
-          statusBar.update(status, repoName);
+          statusBar.update(status);
         }
         recoveryManager.clear();
       }),

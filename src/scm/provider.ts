@@ -119,6 +119,10 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     }
 
     const branch = status.current_branch;
+    const loggedIn = status.current_user !== undefined && status.current_user !== null;
+    const syncStatus = status.sync_status;
+    const behind = syncStatus && !syncStatus.up_to_date ? syncStatus.revisions_behind : 0;
+
     const commands: vscode.Command[] = [
       {
         command: 'flexvault.branchSwitch',
@@ -127,13 +131,23 @@ export class FlexVaultScmProvider implements vscode.Disposable {
       },
     ];
 
-    const syncStatus = status.sync_status;
-    const behind = syncStatus && !syncStatus.up_to_date ? syncStatus.revisions_behind : 0;
-    if (behind > 0) {
+    if (!loggedIn) {
+      commands.push({
+        command: 'flexvault.login',
+        title: '$(sign-in)',
+        tooltip: 'Logged out of FlexVault. Click to log in',
+      });
+    } else if (behind > 0) {
       commands.push({
         command: 'flexvault.sync',
         title: `$(sync) ${behind}↓`,
         tooltip: `${behind} revision${behind === 1 ? '' : 's'} behind the remote. Click to sync`,
+      });
+    } else {
+      commands.push({
+        command: 'flexvault.sync',
+        title: '$(sync)',
+        tooltip: 'FlexVault: up to date. Click to sync',
       });
     }
 
