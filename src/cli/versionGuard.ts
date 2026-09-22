@@ -53,7 +53,7 @@ function compare(left: SemVer, right: SemVer): number {
  */
 export const SUPPORTED_CLI_RANGE: VersionRange = {
   floor: { major: 0, minor: 9, patch: 0 },
-  ceiling: { major: 0, minor: 11, patch: 0 },
+  ceiling: { major: 0, minor: 12, patch: 0 },
 };
 
 export type ProgramProblem = 'unparsable' | 'below-floor' | 'above-ceiling';
