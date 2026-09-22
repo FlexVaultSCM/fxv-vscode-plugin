@@ -91,6 +91,18 @@ describe('StatusBar', () => {
     expect(item.text).toContain('$(sign-in)');
   });
 
+  it('shows error state when showError is called', () => {
+    const item = fakeItem();
+    const bar = new StatusBar(() => item as never);
+
+    bar.showError('Repository format mismatch');
+
+    expect(item.shown).toBe(true);
+    expect(item.text).toBe('$(error) FlexVault');
+    expect(item.tooltip).toContain('Repository format mismatch');
+    expect(item.command).toBe('flexvault.showLog');
+  });
+
   it('disposes the underlying item', () => {
     const item = fakeItem();
     const bar = new StatusBar(() => item as never);

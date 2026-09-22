@@ -47,6 +47,13 @@ export class StatusBar implements vscode.Disposable {
     this.item.show();
   }
 
+  showError(message: string): void {
+    this.item.text = '$(error) FlexVault';
+    this.item.tooltip = `FlexVault: status error\n${message}\n\nClick to show log`;
+    this.item.command = 'flexvault.showLog';
+    this.item.show();
+  }
+
   dispose(): void {
     this.item.dispose();
   }

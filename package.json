@@ -201,22 +201,22 @@
         {
           "command": "flexvault.branchSwitch",
           "group": "1_main@0",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
         },
         {
           "command": "flexvault.publish",
           "group": "1_main@1",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.hasConflicts && flexvault.loggedIn"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError && !flexvault.hasConflicts && flexvault.loggedIn"
         },
         {
           "command": "flexvault.snapshot",
           "group": "1_main@2",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
         },
         {
           "command": "flexvault.sync",
           "group": "1_main@3",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
         },
         {
           "command": "flexvault.openSettings",
@@ -293,19 +293,27 @@
         },
         {
           "command": "flexvault.publish",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.hasConflicts && flexvault.loggedIn"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError && !flexvault.hasConflicts && flexvault.loggedIn"
         },
         {
           "command": "flexvault.snapshot",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
         },
         {
           "command": "flexvault.sync",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
         },
         {
           "command": "flexvault.goto",
-          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
+        },
+        {
+          "command": "flexvault.branchSwitch",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
+        },
+        {
+          "command": "flexvault.branchNew",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
         },
         {
           "command": "flexvault.revert",
@@ -391,9 +399,19 @@
         "when": "!flexvault.cliNotFound && !flexvault.cliIncompatible && !flexvault.enabled"
       },
       {
+        "view": "scm",
+        "contents": "FlexVault was unable to read the repository in this workspace.\n[Show Log](command:flexvault.showLog)",
+        "when": "flexvault.enabled && !flexvault.cliIncompatible && flexvault.statusError"
+      },
+      {
         "view": "flexvaultHistory",
         "contents": "This branch has no snapshots yet.\n[Create Snapshot](command:flexvault.snapshot)",
-        "when": "flexvault.enabled && !flexvault.cliIncompatible && flexvault.headState == empty_branch"
+        "when": "flexvault.enabled && !flexvault.cliIncompatible && !flexvault.statusError && flexvault.headState == empty_branch"
+      },
+      {
+        "view": "flexvaultHistory",
+        "contents": "Unable to load history because the repository could not be read.\n[Show Log](command:flexvault.showLog)",
+        "when": "flexvault.enabled && !flexvault.cliIncompatible && flexvault.statusError"
       }
     ],
     "configuration": {

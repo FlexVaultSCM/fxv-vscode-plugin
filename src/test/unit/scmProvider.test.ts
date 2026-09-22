@@ -40,4 +40,24 @@ describe('FlexVaultScmProvider', () => {
 
     provider.dispose();
   });
+
+  it('disables input box and clears groups when setError is called', () => {
+    const rootUri = vscode.Uri.file('/test/workspace');
+    const statusCache = {
+      status: undefined,
+      onDidChangeStatus: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+    };
+
+    const provider = new FlexVaultScmProvider(rootUri, statusCache as unknown as StatusCache);
+
+    expect(provider.inputBox.enabled).toBe(true);
+
+    provider.setError(true);
+    expect(provider.inputBox.enabled).toBe(false);
+
+    provider.setError(false);
+    expect(provider.inputBox.enabled).toBe(true);
+
+    provider.dispose();
+  });
 });

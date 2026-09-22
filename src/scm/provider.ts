@@ -88,12 +88,27 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     }
   }
 
+  private busy = false;
+  private hasError = false;
+
   get inputBox(): vscode.SourceControlInputBox {
     return this.scm.inputBox;
   }
 
   setBusy(busy: boolean): void {
-    this.scm.inputBox.enabled = !busy;
+    this.busy = busy;
+    this.scm.inputBox.enabled = !this.busy && !this.hasError;
+  }
+
+  setError(hasError: boolean): void {
+    this.hasError = hasError;
+    if (hasError) {
+      this.conflictsGroup.resourceStates = [];
+      this.unpublishedGroup.resourceStates = [];
+      this.workspaceGroup.resourceStates = [];
+      this.scm.count = 0;
+    }
+    this.scm.inputBox.enabled = !this.busy && !this.hasError;
   }
 
   private onStatusChanged(status: StatusPayload | undefined): void {
@@ -104,6 +119,9 @@ export class FlexVaultScmProvider implements vscode.Disposable {
       this.scm.count = 0;
       return;
     }
+
+    this.hasError = false;
+    this.scm.inputBox.enabled = !this.busy;
 
     const desc = mapStatusToResourceDescriptors(status);
     this.conflictsGroup.resourceStates = desc.conflicts.map((d) =>

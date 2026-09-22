@@ -17,6 +17,7 @@ export interface StatusCacheOptions {
   readonly log?: Logger | undefined;
   readonly onInterrupted?: ((error: ErrorPayload) => void) | undefined;
   readonly onLockContention?: ((message: string) => void) | undefined;
+  readonly onStatusError?: ((message: string, exitCode?: number | null) => void) | undefined;
 }
 
 /**
@@ -91,6 +92,7 @@ export class StatusCache implements vscode.Disposable {
         this.options.onLockContention?.(result.message);
       } else {
         this.options.log?.error(`Status refresh failed: ${result.message}`);
+        this.options.onStatusError?.(result.message, result.exitCode);
       }
       return undefined;
     }
@@ -111,9 +113,10 @@ export class StatusCache implements vscode.Disposable {
       // Ignore read errors
     }
 
-    const watcherExcludes = vscode.workspace
-      .getConfiguration('files', this.rootUri)
-      .get<Record<string, boolean>>('watcherExclude', {});
+    const watcherExcludes =
+      vscode.workspace
+        .getConfiguration('files', this.rootUri)
+        .get<Record<string, boolean>>('watcherExclude', {}) ?? {};
     const fileExcludeKeys = Object.keys(watcherExcludes).filter((k) => watcherExcludes[k]);
     const extraExcludes = [...this.options.getWatchExclude(), ...fileExcludeKeys];
 

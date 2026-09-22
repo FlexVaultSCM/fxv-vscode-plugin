@@ -53,6 +53,10 @@ export class ContextKeys {
     await this.updateKey('flexvault.cliNotFound', notFound);
   }
 
+  async setStatusError(statusError: boolean): Promise<void> {
+    await this.updateKey('flexvault.statusError', statusError);
+  }
+
   /**
    * Derive context keys from the latest status snapshot.
    * Null or undefined status resets status-derived keys to their safe defaults.
@@ -75,5 +79,6 @@ export class ContextKeys {
     await this.setHasConflicts(hasConflicts);
     await this.setHeadState(headState);
     await this.setInterrupted(false);
+    await this.setStatusError(false);
   }
 }

@@ -109,6 +109,7 @@ export function activate(context: vscode.ExtensionContext): void {
     decorationProvider = undefined;
     statusBar.update(undefined);
     recoveryManager.clear();
+    void contextKeys.setStatusError(false);
   };
 
   const setupRoot = () => {
@@ -154,6 +155,16 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           });
       },
+      onStatusError: (msg) => {
+        void contextKeys.setStatusError(true);
+        statusBar.showError(msg);
+        scmProvider?.setError(true);
+        void vscode.window.showErrorMessage(`FlexVault: ${msg}`, 'Show Log').then((action) => {
+          if (action === 'Show Log') {
+            log?.show();
+          }
+        });
+      },
     });
     rootSubscriptions.push(statusCache);
 
@@ -161,7 +172,10 @@ export function activate(context: vscode.ExtensionContext): void {
       statusCache.onDidChangeStatus((status) => {
         decorationProvider?.update(status, rootUri);
         void contextKeys.updateFromStatus(status);
-        statusBar.update(status);
+        if (status) {
+          scmProvider?.setError(false);
+          statusBar.update(status);
+        }
         recoveryManager.clear();
       }),
     );

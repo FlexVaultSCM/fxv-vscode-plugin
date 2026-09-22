@@ -118,7 +118,7 @@ function createHarness(
   } as unknown as FxvCommands;
 
   const statusCache = {
-    current: {
+    status: {
       current_branch: currentBranch,
     } as StatusPayload,
     refresh: (opts: { skipRemoteUpdate?: boolean }) => {
