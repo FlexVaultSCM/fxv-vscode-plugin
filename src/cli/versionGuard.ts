@@ -47,12 +47,12 @@ function compare(left: SemVer, right: SemVer): number {
 }
 
 /**
- * Only what has been tested. The ceiling is deliberate: 0.11.0 is the next
+ * Only what has been tested. The ceiling is deliberate: 0.12.0 is the next
  * breaking CLI release and blocks the extension until someone re-pins and
  * tests, which belongs in the release checklist for every CLI minor.
  */
 export const SUPPORTED_CLI_RANGE: VersionRange = {
-  floor: { major: 0, minor: 9, patch: 0 },
+  floor: { major: 0, minor: 11, patch: 0 },
   ceiling: { major: 0, minor: 12, patch: 0 },
 };
 

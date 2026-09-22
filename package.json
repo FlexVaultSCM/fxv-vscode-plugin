@@ -103,6 +103,17 @@
         "category": "FlexVault"
       },
       {
+        "command": "flexvault.branchSwitch",
+        "title": "Switch Branch...",
+        "category": "FlexVault",
+        "icon": "$(git-branch)"
+      },
+      {
+        "command": "flexvault.branchNew",
+        "title": "Create Branch...",
+        "category": "FlexVault"
+      },
+      {
         "command": "flexvault.revert",
         "title": "Revert",
         "category": "FlexVault",
@@ -186,6 +197,11 @@
           "command": "flexvault.refresh",
           "group": "navigation",
           "when": "flexvault.enabled"
+        },
+        {
+          "command": "flexvault.branchSwitch",
+          "group": "1_main@0",
+          "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
         },
         {
           "command": "flexvault.publish",

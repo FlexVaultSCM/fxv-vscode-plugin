@@ -23,6 +23,8 @@ suite('extension activation', () => {
       'flexvault.snapshot',
       'flexvault.sync',
       'flexvault.goto',
+      'flexvault.branchSwitch',
+      'flexvault.branchNew',
       'flexvault.revert',
       'flexvault.resolveMine',
       'flexvault.resolveTheirs',

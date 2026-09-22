@@ -156,4 +156,56 @@ describe('FxvCommands', () => {
       commandClass: 'write',
     });
   });
+
+  it('builds the branch command family', async () => {
+    expect(await argvOf((fxv) => fxv.branchList())).toEqual({
+      argv: ['branch', 'list'],
+      commandClass: 'read',
+      envelope: true,
+    });
+    expect(
+      await argvOf((fxv) =>
+        fxv.branchList({ all: true, mine: true, global: true, includeRetired: true }),
+      ),
+    ).toEqual({
+      argv: ['branch', 'list', '--all', '--mine', '--global', '--include-retired'],
+      commandClass: 'read',
+      envelope: true,
+    });
+    expect(await argvOf((fxv) => fxv.branchSwitch('alice/feat-boss'))).toEqual({
+      argv: ['branch', 'switch'],
+      positionals: ['alice/feat-boss'],
+      commandClass: 'write',
+      envelope: true,
+    });
+    expect(
+      await argvOf((fxv) =>
+        fxv.branchNew({
+          name: 'feat-test',
+          global: true,
+          from: 'main.5',
+          empty: false,
+          noSwitch: true,
+        }),
+      ),
+    ).toEqual({
+      argv: ['branch', 'new', '--global', '--from', 'main.5', '--no-switch'],
+      positionals: ['feat-test'],
+      commandClass: 'write',
+      envelope: true,
+    });
+    expect(
+      await argvOf((fxv) =>
+        fxv.branchNew({
+          name: 'empty-branch',
+          empty: true,
+        }),
+      ),
+    ).toEqual({
+      argv: ['branch', 'new', '--empty'],
+      positionals: ['empty-branch'],
+      commandClass: 'write',
+      envelope: true,
+    });
+  });
 });

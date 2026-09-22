@@ -57,6 +57,10 @@ The FlexVault History view in the SCM container lists past commits with author a
 
 If a sync or navigation command is interrupted (CLI exit code 98), the extension detects the journal state and displays a recovery banner. You can select Finish (`fxv resume --continue`) or Undo (`fxv resume --rollback`).
 
+### Branch management
+
+Switch branches or create new branches directly from the SCM title toolbar or Command Palette (`FlexVault: Switch Branch...`, `FlexVault: Create Branch...`). The branch switcher lists available branches with head revision metadata, flags the active branch, and provides inline creation of new branches with safe mutation guards.
+
 ### Status bar and safety checks
 
 The status bar displays the active branch, revisions behind remote, and current user attribution. Clicking the status bar triggers a sync. Operations refuse to run when open editors have unsaved changes or while a debug session is active.
@@ -66,7 +70,7 @@ The status bar displays the active branch, revisions behind remote, and current 
 ## Prerequisites
 
 - **VS Code**: Version `1.85.0` or newer.
-- **FlexVault CLI**: `fxv` (version `0.9.0` or newer, compatible up to `< 0.11.0`).
+- **FlexVault CLI**: `fxv` (version `0.11.0` or newer, compatible up to `< 0.12.0`).
   - The CLI must be accessible on your system `PATH` or configured via the `flexvault.cliPath` setting.
   - On Windows, install via the official installer; on macOS/Linux, install via standard package paths or Cargo.
 
@@ -117,6 +121,8 @@ Access these commands from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 | **FlexVault: Publish**                       | `flexvault.publish`           | Run the safe publish flow to publish changes.                 |
 | **FlexVault: Sync**                          | `flexvault.sync`              | Synchronize workspace with the current published branch head. |
 | **FlexVault: Go to Revision...**             | `flexvault.goto`              | Switch the workspace to a specific revision spec.             |
+| **FlexVault: Switch Branch...**              | `flexvault.branchSwitch`      | Switch the workspace to another branch.                       |
+| **FlexVault: Create Branch...**              | `flexvault.branchNew`         | Create a new branch in the workspace.                         |
 | **FlexVault: Revert**                        | `flexvault.revert`            | Revert selected files or workspace changes.                   |
 | **FlexVault: Log In...**                     | `flexvault.login`             | Set the active user attribution.                              |
 | **FlexVault: Log Out**                       | `flexvault.logout`            | Clear user attribution.                                       |

@@ -79,6 +79,7 @@ export const window = {
   showWarningMessage: vi.fn().mockResolvedValue(undefined),
   showErrorMessage: vi.fn().mockResolvedValue(undefined),
   showInputBox: vi.fn().mockResolvedValue(undefined),
+  showQuickPick: vi.fn().mockResolvedValue(undefined),
   showTextDocument: vi.fn().mockResolvedValue(undefined),
   createTreeView: vi.fn().mockImplementation(() => ({
     reveal: vi.fn().mockResolvedValue(undefined),
