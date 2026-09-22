@@ -41,30 +41,60 @@ function loggedOutStatus(): StatusPayload {
 }
 
 describe('StatusBar', () => {
-  it('hides the item when status is undefined', () => {
-    const item = fakeItem();
-    const bar = new StatusBar(() => item as never);
+  it('hides items when status is undefined', () => {
+    const branchItem = fakeItem();
+    const syncItem = fakeItem();
+    const bar = new StatusBar(
+      () => branchItem as never,
+      () => syncItem as never,
+    );
 
     bar.update(undefined);
 
-    expect(item.shown).toBe(false);
+    expect(branchItem.shown).toBe(false);
+    expect(syncItem.shown).toBe(false);
   });
 
-  it('shows the branch and a sync command while logged in and up to date', () => {
-    const item = fakeItem();
-    const bar = new StatusBar(() => item as never);
+  it('shows repository name alongside branch and opens branch switch on click', () => {
+    const branchItem = fakeItem();
+    const syncItem = fakeItem();
+    const bar = new StatusBar(
+      () => branchItem as never,
+      () => syncItem as never,
+    );
+
+    bar.update(status(), 'my-repo');
+
+    expect(branchItem.text).toBe('$(repo) my-repo $(git-branch) main');
+    expect(branchItem.command).toBe('flexvault.branchSwitch');
+    expect(branchItem.tooltip).toContain('my-repo on branch main');
+    expect(branchItem.tooltip).toContain('Click to switch branch');
+    expect(branchItem.shown).toBe(true);
+
+    expect(syncItem.text).toBe('$(sync)');
+    expect(syncItem.command).toBe('flexvault.sync');
+    expect(syncItem.shown).toBe(true);
+  });
+
+  it('shows branch name without repo prefix when repoName is omitted', () => {
+    const branchItem = fakeItem();
+    const bar = new StatusBar(() => branchItem as never);
 
     bar.update(status());
 
-    expect(item.text).toContain('main');
-    expect(item.text).not.toContain('↓');
-    expect(item.command).toBe('flexvault.sync');
-    expect(item.shown).toBe(true);
+    expect(branchItem.text).toBe('$(git-branch) main');
+    expect(branchItem.command).toBe('flexvault.branchSwitch');
+    expect(branchItem.tooltip).toContain('on branch main');
+    expect(branchItem.shown).toBe(true);
   });
 
-  it('shows revisions behind when sync_status is not up to date', () => {
-    const item = fakeItem();
-    const bar = new StatusBar(() => item as never);
+  it('shows revisions behind on the sync item when sync_status is not up to date', () => {
+    const branchItem = fakeItem();
+    const syncItem = fakeItem();
+    const bar = new StatusBar(
+      () => branchItem as never,
+      () => syncItem as never,
+    );
 
     bar.update(
       status({
@@ -75,40 +105,60 @@ describe('StatusBar', () => {
           synced_revision: 9,
         },
       }),
+      'test-workspace',
     );
 
-    expect(item.text).toContain('3↓');
-    expect(item.tooltip).toContain('3 revisions behind');
+    expect(branchItem.text).toBe('$(repo) test-workspace $(git-branch) main');
+    expect(branchItem.command).toBe('flexvault.branchSwitch');
+    expect(syncItem.text).toBe('$(sync) 3↓');
+    expect(syncItem.tooltip).toContain('3 revisions behind');
+    expect(syncItem.command).toBe('flexvault.sync');
   });
 
-  it('offers login instead of sync when logged out', () => {
-    const item = fakeItem();
-    const bar = new StatusBar(() => item as never);
+  it('offers login on the sync item when logged out', () => {
+    const branchItem = fakeItem();
+    const syncItem = fakeItem();
+    const bar = new StatusBar(
+      () => branchItem as never,
+      () => syncItem as never,
+    );
 
-    bar.update(loggedOutStatus());
+    bar.update(loggedOutStatus(), 'test-repo');
 
-    expect(item.command).toBe('flexvault.login');
-    expect(item.text).toContain('$(sign-in)');
+    expect(branchItem.command).toBe('flexvault.branchSwitch');
+    expect(syncItem.command).toBe('flexvault.login');
+    expect(syncItem.text).toBe('$(sign-in)');
+    expect(syncItem.tooltip).toContain('Logged out');
   });
 
-  it('shows error state when showError is called', () => {
-    const item = fakeItem();
-    const bar = new StatusBar(() => item as never);
+  it('shows error state on branch item and hides sync item when showError is called', () => {
+    const branchItem = fakeItem();
+    const syncItem = fakeItem();
+    const bar = new StatusBar(
+      () => branchItem as never,
+      () => syncItem as never,
+    );
 
     bar.showError('Repository format mismatch');
 
-    expect(item.shown).toBe(true);
-    expect(item.text).toBe('$(error) FlexVault');
-    expect(item.tooltip).toContain('Repository format mismatch');
-    expect(item.command).toBe('flexvault.showLog');
+    expect(branchItem.shown).toBe(true);
+    expect(branchItem.text).toBe('$(error) FlexVault');
+    expect(branchItem.tooltip).toContain('Repository format mismatch');
+    expect(branchItem.command).toBe('flexvault.showLog');
+    expect(syncItem.shown).toBe(false);
   });
 
-  it('disposes the underlying item', () => {
-    const item = fakeItem();
-    const bar = new StatusBar(() => item as never);
+  it('disposes underlying items', () => {
+    const branchItem = fakeItem();
+    const syncItem = fakeItem();
+    const bar = new StatusBar(
+      () => branchItem as never,
+      () => syncItem as never,
+    );
 
     bar.dispose();
 
-    expect(item.disposed).toBe(true);
+    expect(branchItem.disposed).toBe(true);
+    expect(syncItem.disposed).toBe(true);
   });
 });

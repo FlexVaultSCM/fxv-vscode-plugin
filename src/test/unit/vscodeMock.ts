@@ -174,6 +174,7 @@ export const scm = {
       rootUri,
       inputBox: { placeholder: '', enabled: true, value: '' },
       acceptInputCommand: undefined,
+      statusBarCommands: undefined as unknown[] | undefined,
       count: 0,
       createResourceGroup: vi.fn().mockImplementation((groupId: string, groupLabel: string) => {
         const group = {

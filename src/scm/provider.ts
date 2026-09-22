@@ -107,8 +107,37 @@ export class FlexVaultScmProvider implements vscode.Disposable {
       this.unpublishedGroup.resourceStates = [];
       this.workspaceGroup.resourceStates = [];
       this.scm.count = 0;
+      this.updateStatusBarCommands(undefined);
     }
     this.scm.inputBox.enabled = !this.busy && !this.hasError;
+  }
+
+  private updateStatusBarCommands(status: StatusPayload | undefined): void {
+    if (!status || this.hasError) {
+      this.scm.statusBarCommands = [];
+      return;
+    }
+
+    const branch = status.current_branch;
+    const commands: vscode.Command[] = [
+      {
+        command: 'flexvault.branchSwitch',
+        title: `$(git-branch) ${branch}`,
+        tooltip: `Switch branch (current: ${branch})`,
+      },
+    ];
+
+    const syncStatus = status.sync_status;
+    const behind = syncStatus && !syncStatus.up_to_date ? syncStatus.revisions_behind : 0;
+    if (behind > 0) {
+      commands.push({
+        command: 'flexvault.sync',
+        title: `$(sync) ${behind}↓`,
+        tooltip: `${behind} revision${behind === 1 ? '' : 's'} behind the remote. Click to sync`,
+      });
+    }
+
+    this.scm.statusBarCommands = commands;
   }
 
   private onStatusChanged(status: StatusPayload | undefined): void {
@@ -117,11 +146,13 @@ export class FlexVaultScmProvider implements vscode.Disposable {
       this.unpublishedGroup.resourceStates = [];
       this.workspaceGroup.resourceStates = [];
       this.scm.count = 0;
+      this.updateStatusBarCommands(undefined);
       return;
     }
 
     this.hasError = false;
     this.scm.inputBox.enabled = !this.busy;
+    this.updateStatusBarCommands(status);
 
     const desc = mapStatusToResourceDescriptors(status);
     this.conflictsGroup.resourceStates = desc.conflicts.map((d) =>

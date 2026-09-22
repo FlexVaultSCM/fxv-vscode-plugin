@@ -3,22 +3,32 @@ import * as vscode from 'vscode';
 import type { StatusPayload } from '../cli/types.generated';
 
 /**
- * Branch, revisions-behind, and login state. Clicking runs sync while
- * logged in, or login while logged out, covering both cases with one item.
+ * Status bar controls for FlexVault:
+ * - Branch item showing repository name and branch, clicking opens branch switch.
+ * - Sync item showing synchronization and login state, clicking triggers sync or login.
  */
 export class StatusBar implements vscode.Disposable {
-  private readonly item: vscode.StatusBarItem;
+  private readonly branchItem: vscode.StatusBarItem;
+  private readonly syncItem: vscode.StatusBarItem | undefined;
 
   constructor(
-    createItem: () => vscode.StatusBarItem = () =>
-      vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100),
+    createBranchItem?: () => vscode.StatusBarItem,
+    createSyncItem?: () => vscode.StatusBarItem,
   ) {
-    this.item = createItem();
+    this.branchItem = createBranchItem
+      ? createBranchItem()
+      : vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    this.syncItem = createSyncItem
+      ? createSyncItem()
+      : createBranchItem
+        ? undefined
+        : vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
   }
 
-  update(status: StatusPayload | undefined): void {
+  update(status: StatusPayload | undefined, repoName?: string): void {
     if (!status) {
-      this.item.hide();
+      this.branchItem.hide();
+      this.syncItem?.hide();
       return;
     }
 
@@ -27,34 +37,47 @@ export class StatusBar implements vscode.Disposable {
     const syncStatus = status.sync_status;
     const behind = syncStatus && !syncStatus.up_to_date ? syncStatus.revisions_behind : 0;
 
-    let text = `$(source-control) ${branch}`;
-    if (behind > 0) {
-      text += ` ${behind}↓`;
-    }
-    if (!loggedIn) {
-      text += ' $(sign-in)';
-    }
-    this.item.text = text;
+    const label = repoName
+      ? `$(repo) ${repoName} $(git-branch) ${branch}`
+      : `$(git-branch) ${branch}`;
+    this.branchItem.text = label;
 
-    const tooltipLines = [`FlexVault: on branch ${branch}`];
-    if (behind > 0) {
-      tooltipLines.push(`${behind} revision${behind === 1 ? '' : 's'} behind the remote`);
-    }
-    tooltipLines.push(loggedIn ? 'Click to sync' : 'Logged out. Click to log in');
-    this.item.tooltip = tooltipLines.join('\n');
+    const tooltipLines = [
+      repoName ? `FlexVault: ${repoName} on branch ${branch}` : `FlexVault: on branch ${branch}`,
+    ];
+    tooltipLines.push('Click to switch branch');
+    this.branchItem.tooltip = tooltipLines.join('\n');
+    this.branchItem.command = 'flexvault.branchSwitch';
+    this.branchItem.show();
 
-    this.item.command = loggedIn ? 'flexvault.sync' : 'flexvault.login';
-    this.item.show();
+    if (this.syncItem) {
+      if (!loggedIn) {
+        this.syncItem.text = '$(sign-in)';
+        this.syncItem.tooltip = 'Logged out of FlexVault\nClick to log in';
+        this.syncItem.command = 'flexvault.login';
+      } else if (behind > 0) {
+        this.syncItem.text = `$(sync) ${behind}↓`;
+        this.syncItem.tooltip = `${behind} revision${behind === 1 ? '' : 's'} behind the remote\nClick to sync`;
+        this.syncItem.command = 'flexvault.sync';
+      } else {
+        this.syncItem.text = '$(sync)';
+        this.syncItem.tooltip = 'FlexVault: up to date\nClick to sync';
+        this.syncItem.command = 'flexvault.sync';
+      }
+      this.syncItem.show();
+    }
   }
 
   showError(message: string): void {
-    this.item.text = '$(error) FlexVault';
-    this.item.tooltip = `FlexVault: status error\n${message}\n\nClick to show log`;
-    this.item.command = 'flexvault.showLog';
-    this.item.show();
+    this.branchItem.text = '$(error) FlexVault';
+    this.branchItem.tooltip = `FlexVault: status error\n${message}\n\nClick to show log`;
+    this.branchItem.command = 'flexvault.showLog';
+    this.branchItem.show();
+    this.syncItem?.hide();
   }
 
   dispose(): void {
-    this.item.dispose();
+    this.branchItem.dispose();
+    this.syncItem?.dispose();
   }
 }
