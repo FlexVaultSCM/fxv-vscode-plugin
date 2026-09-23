@@ -62,6 +62,10 @@ export function activate(context: vscode.ExtensionContext): void {
   let statusCache: StatusCache | undefined;
   let decorationProvider: FlexVaultDecorationProvider | undefined;
   let rootSubscriptions: vscode.Disposable[] = [];
+  // Tracks whether the status-error popup has already been shown for the
+  // current error streak, so repeated debounced retries (e.g. from file-save
+  // events while the repo stays unreadable) don't stack duplicate popups.
+  let statusErrorNotified = false;
 
   const runner = new CliRunner({
     binary: () => discovery.locate().path,
@@ -107,9 +111,10 @@ export function activate(context: vscode.ExtensionContext): void {
     scmProvider = undefined;
     statusCache = undefined;
     decorationProvider = undefined;
-    statusBar.update(undefined);
+    statusBar.clearError();
     recoveryManager.clear();
     void contextKeys.setStatusError(false);
+    statusErrorNotified = false;
   };
 
   const setupRoot = () => {
@@ -159,11 +164,14 @@ export function activate(context: vscode.ExtensionContext): void {
         void contextKeys.setStatusError(true);
         statusBar.showError(msg);
         scmProvider?.setError(true);
-        void vscode.window.showErrorMessage(`FlexVault: ${msg}`, 'Show Log').then((action) => {
-          if (action === 'Show Log') {
-            log?.show();
-          }
-        });
+        if (!statusErrorNotified) {
+          statusErrorNotified = true;
+          void vscode.window.showErrorMessage(`FlexVault: ${msg}`, 'Show Log').then((action) => {
+            if (action === 'Show Log') {
+              log?.show();
+            }
+          });
+        }
       },
     });
     rootSubscriptions.push(statusCache);
@@ -174,7 +182,8 @@ export function activate(context: vscode.ExtensionContext): void {
         void contextKeys.updateFromStatus(status);
         if (status) {
           scmProvider?.setError(false);
-          statusBar.update(status);
+          statusBar.clearError();
+          statusErrorNotified = false;
         }
         recoveryManager.clear();
       }),

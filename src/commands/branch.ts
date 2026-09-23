@@ -93,7 +93,7 @@ export async function branchSwitchCommand(
       return;
     }
 
-    if (!selected.branchName || selected.branchName === currentBranch) {
+    if (selected.branchName === currentBranch) {
       if (currentBranch) {
         void vscode.window.showInformationMessage(`Already on branch '${currentBranch}'.`);
       }

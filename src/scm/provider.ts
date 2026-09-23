@@ -108,6 +108,8 @@ export class FlexVaultScmProvider implements vscode.Disposable {
       this.workspaceGroup.resourceStates = [];
       this.scm.count = 0;
       this.updateStatusBarCommands(undefined);
+    } else {
+      this.updateStatusBarCommands(this.statusCache.status);
     }
     this.scm.inputBox.enabled = !this.busy && !this.hasError;
   }

@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
 
-import type { StatusPayload } from '../cli/types.generated';
-
 /**
  * Status bar error indicator for FlexVault:
  * Displays $(error) FlexVault when status errors occur.
@@ -17,9 +15,11 @@ export class StatusBar implements vscode.Disposable {
     this.item = createItem();
   }
 
-  update(_status: StatusPayload | undefined): void {
-    // When healthy status is available or outside workspace, hide the error item.
-    // Branch and sync items are handled natively by scmProvider.statusBarCommands.
+  /**
+   * Hides the error item once healthy status is available. Branch and sync
+   * items are handled natively by scmProvider.statusBarCommands.
+   */
+  clearError(): void {
     this.item.hide();
   }
 
