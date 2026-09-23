@@ -79,6 +79,7 @@ export const window = {
   showWarningMessage: vi.fn().mockResolvedValue(undefined),
   showErrorMessage: vi.fn().mockResolvedValue(undefined),
   showInputBox: vi.fn().mockResolvedValue(undefined),
+  showQuickPick: vi.fn().mockResolvedValue(undefined),
   showTextDocument: vi.fn().mockResolvedValue(undefined),
   createTreeView: vi.fn().mockImplementation(() => ({
     reveal: vi.fn().mockResolvedValue(undefined),
@@ -173,6 +174,7 @@ export const scm = {
       rootUri,
       inputBox: { placeholder: '', enabled: true, value: '' },
       acceptInputCommand: undefined,
+      statusBarCommands: undefined as unknown[] | undefined,
       count: 0,
       createResourceGroup: vi.fn().mockImplementation((groupId: string, groupLabel: string) => {
         const group = {

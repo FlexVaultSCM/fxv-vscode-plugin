@@ -1,10 +1,9 @@
 import * as vscode from 'vscode';
 
-import type { StatusPayload } from '../cli/types.generated';
-
 /**
- * Branch, revisions-behind, and login state. Clicking runs sync while
- * logged in, or login while logged out, covering both cases with one item.
+ * Status bar error indicator for FlexVault:
+ * Displays $(error) FlexVault when status errors occur.
+ * Healthy branch and sync states are handled natively by SourceControl.statusBarCommands.
  */
 export class StatusBar implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
@@ -16,34 +15,18 @@ export class StatusBar implements vscode.Disposable {
     this.item = createItem();
   }
 
-  update(status: StatusPayload | undefined): void {
-    if (!status) {
-      this.item.hide();
-      return;
-    }
+  /**
+   * Hides the error item once healthy status is available. Branch and sync
+   * items are handled natively by scmProvider.statusBarCommands.
+   */
+  clearError(): void {
+    this.item.hide();
+  }
 
-    const branch = status.current_branch;
-    const loggedIn = status.current_user !== undefined && status.current_user !== null;
-    const syncStatus = status.sync_status;
-    const behind = syncStatus && !syncStatus.up_to_date ? syncStatus.revisions_behind : 0;
-
-    let text = `$(source-control) ${branch}`;
-    if (behind > 0) {
-      text += ` ${behind}↓`;
-    }
-    if (!loggedIn) {
-      text += ' $(sign-in)';
-    }
-    this.item.text = text;
-
-    const tooltipLines = [`FlexVault: on branch ${branch}`];
-    if (behind > 0) {
-      tooltipLines.push(`${behind} revision${behind === 1 ? '' : 's'} behind the remote`);
-    }
-    tooltipLines.push(loggedIn ? 'Click to sync' : 'Logged out. Click to log in');
-    this.item.tooltip = tooltipLines.join('\n');
-
-    this.item.command = loggedIn ? 'flexvault.sync' : 'flexvault.login';
+  showError(message: string): void {
+    this.item.text = '$(error) FlexVault';
+    this.item.tooltip = `FlexVault: status error\n${message}\n\nClick to show log`;
+    this.item.command = 'flexvault.showLog';
     this.item.show();
   }
 

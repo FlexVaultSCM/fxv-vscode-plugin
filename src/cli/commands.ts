@@ -1,4 +1,22 @@
+import type {
+  BranchInfo,
+  BranchListOptions,
+  BranchListPayload,
+  BranchNewOptions,
+  BranchNewPayload,
+} from './branchTypes';
 import type { CliRunner, RawResult, RunOptions, RunResult } from './runner';
+
+export interface IntegrationRegisterOptions {
+  /** Workspace path to associate the registration with. */
+  readonly workspace: string;
+  /** Version of the plugin (e.g. "0.4.0"). */
+  readonly pluginVersion: string;
+  /** Minimum compatible fxv version, inclusive (e.g. "0.11.0"). */
+  readonly minVersion: string;
+  /** Maximum compatible fxv version, exclusive (e.g. "0.12.0"). */
+  readonly maxVersion: string;
+}
 import type {
   ChangeInfoPayload,
   DoctorPayload,
@@ -8,6 +26,14 @@ import type {
   StatusPayload,
   WorkspaceSyncPayload,
 } from './types.generated';
+
+export type {
+  BranchInfo,
+  BranchListOptions,
+  BranchListPayload,
+  BranchNewOptions,
+  BranchNewPayload,
+};
 
 /**
  * One typed function per subcommand, and the only surface the rest of the
@@ -214,6 +240,88 @@ export class FxvCommands {
   logout(run: RunOptions = {}): Promise<RunResult<LogoutPayload>> {
     return this.runner.runJson<LogoutPayload>(
       { argv: ['logout'], commandClass: 'write', envelope: true },
+      run,
+    );
+  }
+
+  branchList(
+    options: BranchListOptions = {},
+    run: RunOptions = {},
+  ): Promise<RunResult<BranchListPayload>> {
+    const argv = ['branch', 'list'];
+    if (options.all) {
+      argv.push('--all');
+    }
+    if (options.mine) {
+      argv.push('--mine');
+    }
+    if (options.global) {
+      argv.push('--global');
+    }
+    if (options.includeRetired) {
+      argv.push('--include-retired');
+    }
+    return this.runner.runJson<BranchListPayload>(
+      { argv, commandClass: 'read', envelope: true },
+      run,
+    );
+  }
+
+  branchSwitch(branch: string, run: RunOptions = {}): Promise<RunResult<WorkspaceSyncPayload>> {
+    return this.runner.runJson<WorkspaceSyncPayload>(
+      { argv: ['branch', 'switch'], positionals: [branch], commandClass: 'write', envelope: true },
+      run,
+    );
+  }
+
+  branchNew(options: BranchNewOptions, run: RunOptions = {}): Promise<RunResult<BranchNewPayload>> {
+    const argv = ['branch', 'new'];
+    if (options.global) {
+      argv.push('--global');
+    }
+    if (options.empty) {
+      argv.push('--empty');
+    }
+    if (options.from) {
+      argv.push('--from', options.from);
+    }
+    if (options.noSwitch) {
+      argv.push('--no-switch');
+    }
+    return this.runner.runJson<BranchNewPayload>(
+      { argv, positionals: [options.name], commandClass: 'write', envelope: true },
+      run,
+    );
+  }
+
+  /**
+   * Registers this plugin instance with fxv's integration registry for the
+   * given workspace. Best-effort: callers should fire-and-forget and log
+   * failures rather than surfacing them to the user.
+   */
+  integrationRegister(
+    options: IntegrationRegisterOptions,
+    run: RunOptions = {},
+  ): Promise<RunResult<undefined>> {
+    return this.runner.runJson<undefined>(
+      {
+        argv: [
+          'integration',
+          'register',
+          '--name',
+          'vscode',
+          '--plugin-version',
+          options.pluginVersion,
+          '--min',
+          options.minVersion,
+          '--max-version',
+          options.maxVersion,
+          '--workspace',
+          options.workspace,
+        ],
+        commandClass: 'read',
+        envelope: false,
+      },
       run,
     );
   }

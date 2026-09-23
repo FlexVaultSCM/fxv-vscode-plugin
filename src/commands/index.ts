@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { loginCommand, logoutCommand } from './auth';
+import { branchNewCommand, branchSwitchCommand } from './branch';
 import { clearCacheCommand, diffAgainstBaseCommand } from './diff';
 import { gotoCommand } from './goto';
 import {
@@ -48,6 +49,16 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
     vscode.commands.registerCommand('flexvault.goto', async (...args: unknown[]) => {
       const spec = typeof args[0] === 'string' ? args[0] : undefined;
       await gotoCommand(ctxProvider(), spec);
+    }),
+
+    vscode.commands.registerCommand('flexvault.branchSwitch', async (...args: unknown[]) => {
+      const branch = typeof args[0] === 'string' ? args[0] : undefined;
+      await branchSwitchCommand(ctxProvider(), branch);
+    }),
+
+    vscode.commands.registerCommand('flexvault.branchNew', async (...args: unknown[]) => {
+      const name = typeof args[0] === 'string' ? args[0] : undefined;
+      await branchNewCommand(ctxProvider(), name);
     }),
 
     vscode.commands.registerCommand('flexvault.revert', async (...args: unknown[]) => {

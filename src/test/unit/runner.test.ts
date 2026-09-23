@@ -41,7 +41,7 @@ function script(source: string): string {
 function envelope(
   kind: string,
   payload: unknown,
-  { version = '1.0', programVersion = '0.9.0' } = {},
+  { version = '1.0', programVersion = '0.11.0' } = {},
 ): string {
   return JSON.stringify({
     program: {

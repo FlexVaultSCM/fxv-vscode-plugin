@@ -18,18 +18,22 @@ describe('parseSemVer', () => {
 
 describe('the program version gate', () => {
   it('accepts the floor and everything below the ceiling', () => {
-    expect(guard().checkProgram('0.9.0').ok).toBe(true);
-    expect(guard().checkProgram('0.9.12').ok).toBe(true);
-    expect(guard().checkProgram('0.10.3').ok).toBe(true);
+    expect(guard().checkProgram('0.11.0').ok).toBe(true);
+    expect(guard().checkProgram('0.11.5').ok).toBe(true);
   });
 
   it('blocks below the floor and points at the CLI', () => {
-    const verdict = guard().checkProgram('0.8.9');
+    const verdict = guard().checkProgram('0.10.9');
     expect(verdict).toMatchObject({ ok: false, problem: 'below-floor', remedy: 'upgrade-cli' });
+    expect(guard().checkProgram('0.9.0')).toMatchObject({
+      ok: false,
+      problem: 'below-floor',
+      remedy: 'upgrade-cli',
+    });
   });
 
   it('blocks at the ceiling and points at the extension', () => {
-    const verdict = guard().checkProgram('0.11.0');
+    const verdict = guard().checkProgram('0.12.0');
     expect(verdict).toMatchObject({
       ok: false,
       problem: 'above-ceiling',
@@ -38,8 +42,8 @@ describe('the program version gate', () => {
   });
 
   it('offers fxv upgrade only where a release binary exists', () => {
-    const onWindows = guard('win32').checkProgram('0.8.0');
-    const onLinux = guard('linux').checkProgram('0.8.0');
+    const onWindows = guard('win32').checkProgram('0.10.0');
+    const onLinux = guard('linux').checkProgram('0.10.0');
     expect(onWindows).toMatchObject({ ok: false, upgradeCommandAvailable: true });
     expect(onLinux).toMatchObject({ ok: false, upgradeCommandAvailable: false });
   });
@@ -49,8 +53,8 @@ describe('the program version gate', () => {
   });
 
   it('reads a prerelease as its release version, at both ends of the range', () => {
-    expect(guard().checkProgram('0.9.0-rc1').ok).toBe(true);
-    expect(guard().checkProgram('0.11.0-rc1')).toMatchObject({
+    expect(guard().checkProgram('0.11.0-rc1').ok).toBe(true);
+    expect(guard().checkProgram('0.12.0-rc1')).toMatchObject({
       ok: false,
       problem: 'above-ceiling',
     });

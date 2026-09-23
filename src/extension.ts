@@ -5,7 +5,7 @@ import { FxvCommands } from './cli/commands';
 import { CliDiscovery } from './cli/discovery';
 import { describeLockHolder, parseLockHolder } from './cli/lockErrors';
 import { CliRunner } from './cli/runner';
-import { VersionGuard } from './cli/versionGuard';
+import { SUPPORTED_CLI_RANGE, VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
 import { registerCommands } from './commands';
 import { LINKS, type LinkName } from './links';
@@ -62,6 +62,10 @@ export function activate(context: vscode.ExtensionContext): void {
   let statusCache: StatusCache | undefined;
   let decorationProvider: FlexVaultDecorationProvider | undefined;
   let rootSubscriptions: vscode.Disposable[] = [];
+  // Tracks whether the status-error popup has already been shown for the
+  // current error streak, so repeated debounced retries (e.g. from file-save
+  // events while the repo stays unreadable) don't stack duplicate popups.
+  let statusErrorNotified = false;
 
   const runner = new CliRunner({
     binary: () => discovery.locate().path,
@@ -107,8 +111,10 @@ export function activate(context: vscode.ExtensionContext): void {
     scmProvider = undefined;
     statusCache = undefined;
     decorationProvider = undefined;
-    statusBar.update(undefined);
+    statusBar.clearError();
     recoveryManager.clear();
+    void contextKeys.setStatusError(false);
+    statusErrorNotified = false;
   };
 
   const setupRoot = () => {
@@ -154,6 +160,19 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           });
       },
+      onStatusError: (msg) => {
+        void contextKeys.setStatusError(true);
+        statusBar.showError(msg);
+        scmProvider?.setError(true);
+        if (!statusErrorNotified) {
+          statusErrorNotified = true;
+          void vscode.window.showErrorMessage(`FlexVault: ${msg}`, 'Show Log').then((action) => {
+            if (action === 'Show Log') {
+              log?.show();
+            }
+          });
+        }
+      },
     });
     rootSubscriptions.push(statusCache);
 
@@ -161,12 +180,16 @@ export function activate(context: vscode.ExtensionContext): void {
       statusCache.onDidChangeStatus((status) => {
         decorationProvider?.update(status, rootUri);
         void contextKeys.updateFromStatus(status);
-        statusBar.update(status);
+        if (status) {
+          scmProvider?.setError(false);
+          statusBar.clearError();
+          statusErrorNotified = false;
+        }
         recoveryManager.clear();
       }),
     );
 
-    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, log);
+    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, log, version);
     rootSubscriptions.push(scmProvider);
 
     // Document and file hooks triggering debounced lock-free status refresh
@@ -199,6 +222,27 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     });
+
+    // Register this plugin instance with fxv's integration registry. Best-effort:
+    // failures are logged and silently dropped so activation is never blocked.
+    const { floor, ceiling } = SUPPORTED_CLI_RANGE;
+    const minVersion = `${floor.major}.${floor.minor}.${floor.patch}`;
+    const maxVersion = `${ceiling.major}.${ceiling.minor}.${ceiling.patch}`;
+    void fxv
+      .integrationRegister({
+        workspace: primary.path,
+        pluginVersion: version,
+        minVersion,
+        maxVersion,
+      })
+      .then(() => {
+        log?.info(`Registered vscode integration for workspace ${primary.path}.`);
+      })
+      .catch((err: unknown) => {
+        log?.error(
+          `Integration registration failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
   };
 
   setupRoot();
