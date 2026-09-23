@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.6.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.5.0...v0.6.0) (2026-09-23)
+
+
+### Features
+
+* upgrade fxv-core compatibility to 0.11.0 and add branch switching ([#27](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/27)) ([965b857](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/965b8575998252653a3752d73be02cb220cb7738))
+
 ## [0.5.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.4.0...v0.5.0) (2026-09-20)
 
 
