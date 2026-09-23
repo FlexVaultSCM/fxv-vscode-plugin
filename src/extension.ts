@@ -5,7 +5,7 @@ import { FxvCommands } from './cli/commands';
 import { CliDiscovery } from './cli/discovery';
 import { describeLockHolder, parseLockHolder } from './cli/lockErrors';
 import { CliRunner } from './cli/runner';
-import { VersionGuard } from './cli/versionGuard';
+import { SUPPORTED_CLI_RANGE, VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
 import { registerCommands } from './commands';
 import { LINKS, type LinkName } from './links';
@@ -189,7 +189,7 @@ export function activate(context: vscode.ExtensionContext): void {
       }),
     );
 
-    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, log);
+    scmProvider = new FlexVaultScmProvider(rootUri, statusCache, log, version);
     rootSubscriptions.push(scmProvider);
 
     // Document and file hooks triggering debounced lock-free status refresh
@@ -222,6 +222,27 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     });
+
+    // Register this plugin instance with fxv's integration registry. Best-effort:
+    // failures are logged and silently dropped so activation is never blocked.
+    const { floor, ceiling } = SUPPORTED_CLI_RANGE;
+    const minVersion = `${floor.major}.${floor.minor}.${floor.patch}`;
+    const maxVersion = `${ceiling.major}.${ceiling.minor}.${ceiling.patch}`;
+    void fxv
+      .integrationRegister({
+        workspace: primary.path,
+        pluginVersion: version,
+        minVersion,
+        maxVersion,
+      })
+      .then(() => {
+        log?.info(`Registered vscode integration for workspace ${primary.path}.`);
+      })
+      .catch((err: unknown) => {
+        log?.error(
+          `Integration registration failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
   };
 
   setupRoot();

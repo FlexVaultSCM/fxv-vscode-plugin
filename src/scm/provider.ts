@@ -54,8 +54,10 @@ export class FlexVaultScmProvider implements vscode.Disposable {
     private readonly rootUri: vscode.Uri,
     private readonly statusCache: StatusCache,
     private readonly log?: Logger,
+    version?: string,
   ) {
-    this.scm = vscode.scm.createSourceControl('flexvault', 'FlexVault', rootUri);
+    const label = version ? `FlexVault ${version} Beta` : 'FlexVault';
+    this.scm = vscode.scm.createSourceControl('flexvault', label, rootUri);
     this.scm.inputBox.placeholder = 'Message (Ctrl+Enter to publish)';
     this.scm.inputBox.enabled = true;
     this.scm.acceptInputCommand = {

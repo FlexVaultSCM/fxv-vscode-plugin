@@ -6,6 +6,17 @@ import type {
   BranchNewPayload,
 } from './branchTypes';
 import type { CliRunner, RawResult, RunOptions, RunResult } from './runner';
+
+export interface IntegrationRegisterOptions {
+  /** Workspace path to associate the registration with. */
+  readonly workspace: string;
+  /** Version of the plugin (e.g. "0.4.0"). */
+  readonly pluginVersion: string;
+  /** Minimum compatible fxv version, inclusive (e.g. "0.11.0"). */
+  readonly minVersion: string;
+  /** Maximum compatible fxv version, exclusive (e.g. "0.12.0"). */
+  readonly maxVersion: string;
+}
 import type {
   ChangeInfoPayload,
   DoctorPayload,
@@ -279,6 +290,38 @@ export class FxvCommands {
     }
     return this.runner.runJson<BranchNewPayload>(
       { argv, positionals: [options.name], commandClass: 'write', envelope: true },
+      run,
+    );
+  }
+
+  /**
+   * Registers this plugin instance with fxv's integration registry for the
+   * given workspace. Best-effort: callers should fire-and-forget and log
+   * failures rather than surfacing them to the user.
+   */
+  integrationRegister(
+    options: IntegrationRegisterOptions,
+    run: RunOptions = {},
+  ): Promise<RunResult<undefined>> {
+    return this.runner.runJson<undefined>(
+      {
+        argv: [
+          'integration',
+          'register',
+          '--name',
+          'vscode',
+          '--plugin-version',
+          options.pluginVersion,
+          '--min',
+          options.minVersion,
+          '--max-version',
+          options.maxVersion,
+          '--workspace',
+          options.workspace,
+        ],
+        commandClass: 'read',
+        envelope: false,
+      },
       run,
     );
   }

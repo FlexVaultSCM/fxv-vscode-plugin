@@ -157,6 +157,36 @@ describe('FxvCommands', () => {
     });
   });
 
+  it('registers the vscode integration with the correct argv', async () => {
+    expect(
+      await argvOf((fxv) =>
+        fxv.integrationRegister({
+          workspace: '/path/to/ws',
+          pluginVersion: '0.4.0',
+          minVersion: '0.11.0',
+          maxVersion: '0.12.0',
+        }),
+      ),
+    ).toEqual({
+      argv: [
+        'integration',
+        'register',
+        '--name',
+        'vscode',
+        '--plugin-version',
+        '0.4.0',
+        '--min',
+        '0.11.0',
+        '--max-version',
+        '0.12.0',
+        '--workspace',
+        '/path/to/ws',
+      ],
+      commandClass: 'read',
+      envelope: false,
+    });
+  });
+
   it('builds the branch command family', async () => {
     expect(await argvOf((fxv) => fxv.branchList())).toEqual({
       argv: ['branch', 'list'],
