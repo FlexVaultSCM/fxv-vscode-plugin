@@ -42,6 +42,8 @@ export function computeFileDecorationData(file: FileStatus): FileDecorationData 
 
 const isCaseInsensitive = process.platform === 'win32' || process.platform === 'darwin';
 
+export const IGNORED_THEME_COLOR_ID = 'flexvault.ignoredResourceForeground';
+
 /**
  * Provides file decorations for the Explorer and SCM views.
  */
@@ -55,6 +57,23 @@ export class FlexVaultDecorationProvider
 
   private decorationsByPath = new Map<string, vscode.FileDecoration>();
   private rootPath: string | undefined;
+  private ignoreChecker: ((relPath: string) => boolean) | undefined;
+
+  /**
+   * Registers a callback used to grey out files ignored by .fxvignore, mirroring
+   * how the built-in Git extension dims gitignored files in the Explorer.
+   */
+  setIgnoreChecker(checker: ((relPath: string) => boolean) | undefined): void {
+    this.ignoreChecker = checker;
+    this._onDidChangeFileDecorations.fire(undefined);
+  }
+
+  /**
+   * Forces the Explorer/SCM views to re-query decorations, e.g. after .fxvignore rules change.
+   */
+  refresh(): void {
+    this._onDidChangeFileDecorations.fire(undefined);
+  }
 
   update(status: StatusPayload | undefined, rootUri: vscode.Uri | undefined): void {
     this.decorationsByPath.clear();
@@ -87,7 +106,18 @@ export class FlexVaultDecorationProvider
     }
 
     const key = isCaseInsensitive ? rel.toLowerCase() : rel;
-    return this.decorationsByPath.get(key);
+    const existing = this.decorationsByPath.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    if (this.ignoreChecker?.(rel)) {
+      return {
+        color: new vscode.ThemeColor(IGNORED_THEME_COLOR_ID),
+      };
+    }
+
+    return undefined;
   }
 
   dispose(): void {

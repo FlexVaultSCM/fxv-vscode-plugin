@@ -3,10 +3,10 @@ import type { ChangeKind, ConflictState, FileStatus, StatusPayload } from '../cl
 export type ResourceGroupType = 'conflicts' | 'unpublished' | 'workspace';
 
 export type ThemeColorId =
-  | 'gitDecoration.addedResourceForeground'
-  | 'gitDecoration.modifiedResourceForeground'
-  | 'gitDecoration.deletedResourceForeground'
-  | 'gitDecoration.conflictingResourceForeground';
+  | 'flexvault.addedResourceForeground'
+  | 'flexvault.modifiedResourceForeground'
+  | 'flexvault.deletedResourceForeground'
+  | 'flexvault.conflictingResourceForeground';
 
 export interface ResourceDescriptor {
   readonly path: string;
@@ -71,16 +71,16 @@ export function getChangeKindTooltip(kind: ChangeKind): string {
 export function getChangeKindThemeColorId(kind: ChangeKind): ThemeColorId {
   switch (kind) {
     case 'added':
-      return 'gitDecoration.addedResourceForeground';
+      return 'flexvault.addedResourceForeground';
     case 'modified':
     case 'maybe_changed':
-      return 'gitDecoration.modifiedResourceForeground';
+      return 'flexvault.modifiedResourceForeground';
     case 'deleted':
-      return 'gitDecoration.deletedResourceForeground';
+      return 'flexvault.deletedResourceForeground';
   }
 }
 
-export const CONFLICT_THEME_COLOR_ID: ThemeColorId = 'gitDecoration.conflictingResourceForeground';
+export const CONFLICT_THEME_COLOR_ID: ThemeColorId = 'flexvault.conflictingResourceForeground';
 
 /**
  * Maps a StatusPayload to Conflicts, Unpublished, and Workspace resource groups.

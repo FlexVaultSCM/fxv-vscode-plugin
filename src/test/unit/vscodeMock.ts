@@ -132,6 +132,15 @@ export class ThemeColor {
   constructor(readonly id: string) {}
 }
 
+export class FileDecoration {
+  propagate?: boolean;
+  constructor(
+    public badge?: string,
+    public tooltip?: string,
+    public color?: unknown,
+  ) {}
+}
+
 export enum TreeItemCollapsibleState {
   None = 0,
   Collapsed = 1,
