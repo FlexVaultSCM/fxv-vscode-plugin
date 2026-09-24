@@ -35,6 +35,7 @@ export class StatusCache implements vscode.Disposable {
   private watcher: vscode.FileSystemWatcher | null = null;
   private watcherDisposables: vscode.Disposable[] = [];
   private ignoreFilter: IgnoreFilter;
+  private lastIgnoreRulesKey: string | undefined;
   private disposables: vscode.Disposable[] = [];
 
   constructor(
@@ -130,6 +131,12 @@ export class StatusCache implements vscode.Disposable {
         .get<Record<string, boolean>>('watcherExclude', {}) ?? {};
     const fileExcludeKeys = Object.keys(watcherExcludes).filter((k) => watcherExcludes[k]);
     const extraExcludes = [...this.options.getWatchExclude(), ...fileExcludeKeys];
+
+    const rulesKey = JSON.stringify([content, extraExcludes]);
+    if (rulesKey === this.lastIgnoreRulesKey) {
+      return;
+    }
+    this.lastIgnoreRulesKey = rulesKey;
 
     this.ignoreFilter.updateRules(content, extraExcludes);
     this._onDidChangeIgnoreRules.fire();
