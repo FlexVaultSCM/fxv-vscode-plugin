@@ -27,6 +27,9 @@ export class StatusCache implements vscode.Disposable {
   private readonly _onDidChangeStatus = new vscode.EventEmitter<StatusPayload | undefined>();
   readonly onDidChangeStatus = this._onDidChangeStatus.event;
 
+  private readonly _onDidChangeIgnoreRules = new vscode.EventEmitter<void>();
+  readonly onDidChangeIgnoreRules = this._onDidChangeIgnoreRules.event;
+
   private currentStatus: StatusPayload | undefined;
   private readonly coordinator: StatusCoordinator;
   private watcher: vscode.FileSystemWatcher | null = null;
@@ -51,6 +54,14 @@ export class StatusCache implements vscode.Disposable {
 
   get status(): StatusPayload | undefined {
     return this.currentStatus;
+  }
+
+  /**
+   * Tests whether a path (relative to the workspace root) is ignored via .fxvignore
+   * or the configured watcher excludes.
+   */
+  isPathIgnored(relativePath: string): boolean {
+    return this.ignoreFilter.isIgnored(relativePath);
   }
 
   /**
@@ -121,6 +132,7 @@ export class StatusCache implements vscode.Disposable {
     const extraExcludes = [...this.options.getWatchExclude(), ...fileExcludeKeys];
 
     this.ignoreFilter.updateRules(content, extraExcludes);
+    this._onDidChangeIgnoreRules.fire();
   }
 
   private setupWatcher(): void {
@@ -169,5 +181,6 @@ export class StatusCache implements vscode.Disposable {
     }
     this.disposables.length = 0;
     this._onDidChangeStatus.dispose();
+    this._onDidChangeIgnoreRules.dispose();
   }
 }
