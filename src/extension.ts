@@ -178,9 +178,7 @@ export function activate(context: vscode.ExtensionContext): void {
     rootSubscriptions.push(statusCache);
 
     decorationProvider.setIgnoreChecker((rel) => statusCache?.isPathIgnored(rel) ?? false);
-    rootSubscriptions.push(
-      statusCache.onDidChangeIgnoreRules(() => decorationProvider?.refresh()),
-    );
+    rootSubscriptions.push(statusCache.onDidChangeIgnoreRules(() => decorationProvider?.refresh()));
 
     rootSubscriptions.push(
       statusCache.onDidChangeStatus((status) => {
