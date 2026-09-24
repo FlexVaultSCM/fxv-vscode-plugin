@@ -486,7 +486,59 @@
           "description": "Verbosity of the FlexVault output channel."
         }
       }
-    }
+    },
+    "colors": [
+      {
+        "id": "flexvault.addedResourceForeground",
+        "description": "Color for added FlexVault resources.",
+        "defaults": {
+          "light": "#587c0c",
+          "dark": "#81b88b",
+          "highContrast": "#a1e3ad",
+          "highContrastLight": "#374e06"
+        }
+      },
+      {
+        "id": "flexvault.modifiedResourceForeground",
+        "description": "Color for modified FlexVault resources.",
+        "defaults": {
+          "light": "#895503",
+          "dark": "#E2C08D",
+          "highContrast": "#E2C08D",
+          "highContrastLight": "#895503"
+        }
+      },
+      {
+        "id": "flexvault.deletedResourceForeground",
+        "description": "Color for deleted FlexVault resources.",
+        "defaults": {
+          "light": "#ad0707",
+          "dark": "#c74e39",
+          "highContrast": "#c74e39",
+          "highContrastLight": "#ad0707"
+        }
+      },
+      {
+        "id": "flexvault.conflictingResourceForeground",
+        "description": "Color for FlexVault resources with conflicts.",
+        "defaults": {
+          "light": "#ad0707",
+          "dark": "#e4676b",
+          "highContrast": "#c74e39",
+          "highContrastLight": "#ad0707"
+        }
+      },
+      {
+        "id": "flexvault.ignoredResourceForeground",
+        "description": "Color for FlexVault resources ignored via .fxvignore.",
+        "defaults": {
+          "light": "#8E8E90",
+          "dark": "#8C8C8C",
+          "highContrast": "#A7A8A9",
+          "highContrastLight": "#8e8e90"
+        }
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.js --production",

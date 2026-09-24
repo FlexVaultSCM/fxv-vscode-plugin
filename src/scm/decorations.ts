@@ -42,7 +42,7 @@ export function computeFileDecorationData(file: FileStatus): FileDecorationData 
 
 const isCaseInsensitive = process.platform === 'win32' || process.platform === 'darwin';
 
-export const IGNORED_THEME_COLOR_ID = 'gitDecoration.ignoredResourceForeground';
+export const IGNORED_THEME_COLOR_ID = 'flexvault.ignoredResourceForeground';
 
 /**
  * Provides file decorations for the Explorer and SCM views.

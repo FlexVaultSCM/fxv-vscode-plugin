@@ -76,7 +76,7 @@ describe('diffAgainstBaseCommand', () => {
       tooltip: 'Modified',
       strikeThrough: false,
       isDeleted: false,
-      themeColorId: 'gitDecoration.modifiedResourceForeground',
+      themeColorId: 'flexvault.modifiedResourceForeground',
       file: { path: 'modified.txt', workspace_state: 'modified' },
     };
 
@@ -101,7 +101,7 @@ describe('diffAgainstBaseCommand', () => {
       tooltip: 'Unpublished',
       strikeThrough: false,
       isDeleted: false,
-      themeColorId: 'gitDecoration.modifiedResourceForeground',
+      themeColorId: 'flexvault.modifiedResourceForeground',
       file: { path: 'modified.txt', unpublished_state: 'modified' },
     };
 
@@ -135,7 +135,7 @@ describe('diffAgainstBaseCommand', () => {
       tooltip: 'Added',
       strikeThrough: false,
       isDeleted: false,
-      themeColorId: 'gitDecoration.addedResourceForeground',
+      themeColorId: 'flexvault.addedResourceForeground',
       changeKind: 'added',
       file: { path: 'new.txt', workspace_state: 'added' },
     };
@@ -183,7 +183,7 @@ describe('diffAgainstBaseCommand', () => {
       tooltip: 'Deleted',
       strikeThrough: true,
       isDeleted: true,
-      themeColorId: 'gitDecoration.deletedResourceForeground',
+      themeColorId: 'flexvault.deletedResourceForeground',
       changeKind: 'deleted',
       file: { path: 'deleted.txt', workspace_state: 'deleted' },
     };
