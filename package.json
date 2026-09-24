@@ -2,7 +2,7 @@
   "name": "flexvault-vscode",
   "displayName": "FlexVault (fxv)",
   "description": "FlexVault (fxv) source control integration for Visual Studio Code through the fxv CLI.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "flexvault",
   "license": "MIT",
   "icon": "media/icon.png",

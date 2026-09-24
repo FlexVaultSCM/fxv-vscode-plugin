@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.7.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.6.0...v0.7.0) (2026-09-24)
+
+
+### Features
+
+* Grey out fxvignore'd files in Explorer ([#29](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/29)) ([cc08222](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/cc082220beac1e610ada74b02e24dc19f1c452b0))
+
 ## [0.6.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.5.0...v0.6.0) (2026-09-23)
 
 
