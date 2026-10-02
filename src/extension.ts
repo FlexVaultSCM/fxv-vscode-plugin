@@ -8,11 +8,12 @@ import { CliRunner } from './cli/runner';
 import { SUPPORTED_CLI_RANGE, VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
 import { registerCommands } from './commands';
+import { historyFilterDescription } from './commands/history';
 import { LINKS, type LinkName } from './links';
 import { ContentCache } from './providers/contentCache';
 import { FxvContentProvider, FXV_SCHEME } from './providers/contentProvider';
 import type { HistoryTreeElement } from './providers/historyItems';
-import { HistoryTreeProvider } from './providers/historyTree';
+import { HistoryTreeProvider, type HistoryFilter } from './providers/historyTree';
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
 import { ContextKeys } from './state/contextKeys';
@@ -93,14 +94,19 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const fxv = new FxvCommands(runner);
 
+  const initialFilter = stringSetting('historyFilter', 'all');
+  const normalizedFilter: HistoryFilter =
+    initialFilter === 'draft' || initialFilter === 'published' ? initialFilter : 'all';
   const historyProvider = new HistoryTreeProvider(
     fxv,
     () => numberSetting('historyLimit', 50, 1),
     log,
+    normalizedFilter,
   );
   const historyTreeView = vscode.window.createTreeView<HistoryTreeElement>('flexvaultHistory', {
     treeDataProvider: historyProvider,
   });
+  historyTreeView.description = historyFilterDescription(normalizedFilter);
   context.subscriptions.push(historyProvider, historyTreeView);
 
   const teardownRoot = () => {
@@ -283,6 +289,12 @@ export function activate(context: vscode.ExtensionContext): void {
       if (event.affectsConfiguration('flexvault.historyLimit')) {
         historyProvider.refresh();
       }
+      if (event.affectsConfiguration('flexvault.historyFilter')) {
+        const raw = stringSetting('historyFilter', 'all');
+        const filter: HistoryFilter = raw === 'draft' || raw === 'published' ? raw : 'all';
+        historyProvider.setFilter(filter);
+        historyTreeView.description = historyFilterDescription(filter);
+      }
     }),
   );
 
@@ -352,6 +364,11 @@ function booleanSetting(name: string, fallback: boolean): boolean {
 function stringArraySetting(name: string, fallback: string[]): string[] {
   const value = vscode.workspace.getConfiguration('flexvault').get<string[]>(name);
   return Array.isArray(value) ? value : fallback;
+}
+
+function stringSetting(name: string, fallback: string): string {
+  const value = vscode.workspace.getConfiguration('flexvault').get<string>(name);
+  return typeof value === 'string' && value.length > 0 ? value : fallback;
 }
 
 function openLink(name: LinkName): Thenable<boolean> {

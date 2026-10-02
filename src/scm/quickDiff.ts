@@ -28,7 +28,16 @@ export class FlexVaultQuickDiffProvider implements vscode.QuickDiffProvider {
       return undefined;
     }
 
-    const baseSpec = resolveQuickDiffBaseRevision(this.statusCache.status);
+    const status = this.statusCache.status;
+    const file = status?.files.find((f) => f.path.replace(/\\/g, '/') === relPath);
+    if (
+      file?.workspace_state === 'added' ||
+      (file?.unpublished_state === 'added' && !file.workspace_state)
+    ) {
+      return undefined;
+    }
+
+    const baseSpec = resolveQuickDiffBaseRevision(status);
     if (!baseSpec) {
       return undefined;
     }

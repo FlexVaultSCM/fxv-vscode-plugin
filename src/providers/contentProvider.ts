@@ -60,6 +60,9 @@ export class FxvContentProvider implements vscode.TextDocumentContentProvider, v
     });
 
     if (!result.ok) {
+      if (result.message.includes('does not exist at revision')) {
+        return '';
+      }
       const msg = `Failed to load ${parsed.path} at ${parsed.revisionSpec}: ${result.message}`;
       this.log?.error(msg);
       throw new Error(msg);

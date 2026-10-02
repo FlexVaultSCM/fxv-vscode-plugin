@@ -315,7 +315,13 @@ describe('HistoryTreeProvider', () => {
 
     expect(fxv.changeinfo).toHaveBeenCalledWith('main.11');
     expect(children).toEqual([
-      { kind: 'change', commitSpec: 'main.11', path: 'src/a.txt', action: 'added' },
+      {
+        kind: 'change',
+        commitSpec: 'main.11',
+        previousCommitSpec: 'main.10',
+        path: 'src/a.txt',
+        action: 'added',
+      },
     ]);
   });
 
@@ -423,5 +429,88 @@ describe('HistoryTreeProvider', () => {
   it('dispose tears down the change-data emitter', () => {
     provider.dispose();
     expect(() => provider.refresh()).not.toThrow();
+  });
+
+  describe('filtering', () => {
+    const mixedEntries = [
+      {
+        commit: { branch: 'main', type: 'draft' as const, revision: 11, draft_revision: 2 },
+        timestamp_millis_since_epoch_utc: Date.now(),
+        author_id: 'u1',
+        author_display_name: 'Ada',
+        author_details: { type: 'Local' as const },
+      },
+      {
+        commit: { branch: 'main', type: 'published' as const, revision: 11 },
+        timestamp_millis_since_epoch_utc: Date.now(),
+        author_id: 'u1',
+        author_display_name: 'Ada',
+        author_details: { type: 'Local' as const },
+      },
+      {
+        commit: { branch: 'main', type: 'draft' as const, revision: 10, draft_revision: 1 },
+        timestamp_millis_since_epoch_utc: Date.now(),
+        author_id: 'u1',
+        author_display_name: 'Ada',
+        author_details: { type: 'Local' as const },
+      },
+    ];
+
+    it('defaults to all filter and requests unfiltered history', async () => {
+      expect(provider.getFilter()).toBe('all');
+      fxv.history.mockResolvedValue({
+        ok: true,
+        payload: { entries: mixedEntries },
+      });
+
+      const children = await provider.getChildren();
+      expect(fxv.history).toHaveBeenCalledWith({ count: 50 });
+      expect(children).toHaveLength(3);
+    });
+
+    it('passes draftOnly flag and filters for draft revisions', async () => {
+      provider.setFilter('draft');
+      expect(provider.getFilter()).toBe('draft');
+
+      fxv.history.mockResolvedValue({
+        ok: true,
+        payload: { entries: mixedEntries },
+      });
+
+      const children = (await provider.getChildren()) as CommitElement[];
+      expect(fxv.history).toHaveBeenCalledWith({ count: 50, draftOnly: true });
+      expect(children).toHaveLength(2);
+      expect(children.every((c) => c.commit.commit.type === 'draft')).toBe(true);
+    });
+
+    it('passes publishedOnly flag and filters for published revisions', async () => {
+      provider.setFilter('published');
+      expect(provider.getFilter()).toBe('published');
+
+      fxv.history.mockResolvedValue({
+        ok: true,
+        payload: { entries: mixedEntries },
+      });
+
+      const children = (await provider.getChildren()) as CommitElement[];
+      expect(fxv.history).toHaveBeenCalledWith({ count: 50, publishedOnly: true });
+      expect(children).toHaveLength(1);
+      expect(children[0]?.spec).toBe('main.11');
+      expect(children[0]?.commit.commit.type).toBe('published');
+    });
+
+    it('setFilter only triggers refresh when the filter value actually changes', () => {
+      const listener = vi.fn();
+      provider.onDidChangeTreeData(listener);
+
+      provider.setFilter('all');
+      expect(listener).not.toHaveBeenCalled();
+
+      provider.setFilter('draft');
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      provider.setFilter('draft');
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
   });
 });

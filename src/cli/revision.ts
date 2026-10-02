@@ -78,3 +78,64 @@ export function parseSpec(spec: string): RevisionSpec | undefined {
 
   return undefined;
 }
+
+/**
+ * Resolves the previous revision spec for a given commit info.
+ * - For a draft commit with draft_revision > 1: preceding draft (e.g. main.11.2 -> main.11.1).
+ * - For a draft commit with draft_revision == 1: published parent if parented (e.g. main.11.1 -> main.11).
+ * - For a draft commit with draft_revision == 1 and no parent (main.-.1): undefined.
+ * - For a published commit with revision > 0: preceding revision (e.g. main.11 -> main.10).
+ * - For a published commit with revision == 0: root revision, returns undefined.
+ */
+export function resolvePreviousRevisionSpec(commit: CommitInfo): string | undefined {
+  if (commit.type === 'draft') {
+    if (commit.draft_revision !== undefined && commit.draft_revision > 1) {
+      return specFromRevision(commit.branch, commit.revision, commit.draft_revision - 1);
+    }
+    if (commit.draft_revision === 1) {
+      if (commit.revision !== undefined) {
+        return specFromRevision(commit.branch, commit.revision);
+      }
+      return undefined;
+    }
+    return undefined;
+  }
+
+  if (commit.type === 'published') {
+    if (commit.revision !== undefined && commit.revision > 0) {
+      return specFromRevision(commit.branch, commit.revision - 1);
+    }
+    return undefined;
+  }
+
+  return undefined;
+}
+
+/**
+ * Resolves the previous revision spec from a spec string by parsing it.
+ */
+export function resolvePreviousRevisionSpecFromSpec(spec: string): string | undefined {
+  const parsed = parseSpec(spec);
+  if (!parsed) {
+    return undefined;
+  }
+
+  if (parsed.draftRevision !== undefined) {
+    if (parsed.draftRevision > 1) {
+      return specFromRevision(parsed.branch, parsed.revision, parsed.draftRevision - 1);
+    }
+    if (parsed.draftRevision === 1) {
+      if (parsed.revision !== undefined) {
+        return specFromRevision(parsed.branch, parsed.revision);
+      }
+      return undefined;
+    }
+    return undefined;
+  }
+
+  if (parsed.revision !== undefined && parsed.revision > 0) {
+    return specFromRevision(parsed.branch, parsed.revision - 1);
+  }
+
+  return undefined;
+}

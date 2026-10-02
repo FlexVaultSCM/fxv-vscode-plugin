@@ -22,6 +22,7 @@ export interface CommitElement {
 export interface ChangeElement {
   readonly kind: 'change';
   readonly commitSpec: string;
+  readonly previousCommitSpec?: string;
   readonly path: string;
   readonly action: ChangeKind;
 }
@@ -44,10 +45,12 @@ export function commitsFromHistoryPayload(payload: HistoryPayload): CommitElemen
 export function changesFromChangeInfoPayload(
   commitSpec: string,
   payload: ChangeInfoPayload,
+  previousCommitSpec?: string,
 ): ChangeElement[] {
   return payload.changes.map((change) => ({
     kind: 'change',
     commitSpec,
+    ...(previousCommitSpec !== undefined ? { previousCommitSpec } : {}),
     path: change.path,
     action: change.action,
   }));

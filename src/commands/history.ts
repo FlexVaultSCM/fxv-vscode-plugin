@@ -1,7 +1,9 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+import { resolvePreviousRevisionSpecFromSpec } from '../cli/revision';
 import type { ChangeElement, CommitElement } from '../providers/historyItems';
+import type { HistoryFilter } from '../providers/historyTree';
 import { toFxvUri } from '../providers/fxvUri';
 import type { CommandContext } from './types';
 
@@ -34,43 +36,97 @@ export async function historyCopyRevisionCommand(
 }
 
 /**
- * Opens a diff between a changed file at the commit that changed it and the
- * current working-tree copy, reusing the fxv: content provider.
- * A file the commit deleted has no content to read back at that revision, so
- * there is nothing to diff.
+ * Opens a diff between a changed file at the commit that changed it and its
+ * previous revision in history, reusing the fxv: content provider.
+ * When no previous revision is available (e.g. root commit), opens the
+ * historical file directly.
  */
 export async function historyOpenChangeCommand(
-  ctx: CommandContext,
+  _ctx: CommandContext,
   element: ChangeElement,
 ): Promise<void> {
-  if (!ctx.rootUri) {
-    return;
-  }
-
   const fileName = path.basename(element.path);
+  const currentUri = toFxvUri(element.path, element.commitSpec);
 
-  if (element.action === 'deleted') {
-    void vscode.window.showInformationMessage(
-      `${fileName} was deleted in revision ${element.commitSpec}.`,
-    );
+  const previousSpec =
+    element.previousCommitSpec ?? resolvePreviousRevisionSpecFromSpec(element.commitSpec);
+
+  if (!previousSpec) {
+    if (element.action === 'deleted') {
+      void vscode.window.showInformationMessage(
+        `${fileName} was deleted in revision ${element.commitSpec}.`,
+      );
+      return;
+    }
+    await vscode.window.showTextDocument(currentUri);
     return;
   }
 
-  const historicalUri = toFxvUri(element.path, element.commitSpec);
-  const localUri = vscode.Uri.joinPath(ctx.rootUri, ...element.path.split('/'));
+  const previousUri = toFxvUri(element.path, previousSpec);
+  const title = `${fileName} (${previousSpec} ↔ ${element.commitSpec})`;
+  await vscode.commands.executeCommand('vscode.diff', previousUri, currentUri, title);
+}
 
-  let localExists = true;
-  try {
-    await vscode.workspace.fs.stat(localUri);
-  } catch {
-    localExists = false;
+export function historyFilterDescription(filter: HistoryFilter): string {
+  switch (filter) {
+    case 'draft':
+      return 'Drafts';
+    case 'published':
+      return 'Published';
+    default:
+      return '';
+  }
+}
+
+interface FilterPickItem extends vscode.QuickPickItem {
+  readonly filter: HistoryFilter;
+}
+
+export async function historyFilterCommand(
+  ctx: CommandContext,
+  targetFilter?: unknown,
+): Promise<void> {
+  const currentFilter = ctx.historyProvider?.getFilter() ?? 'all';
+  let filter: HistoryFilter | undefined;
+
+  if (targetFilter === 'all' || targetFilter === 'draft' || targetFilter === 'published') {
+    filter = targetFilter;
+  } else {
+    const items: FilterPickItem[] = [
+      {
+        label: `${currentFilter === 'all' ? '$(check) ' : ''}All Revisions`,
+        description: 'Show both draft and published revisions',
+        filter: 'all',
+      },
+      {
+        label: `${currentFilter === 'draft' ? '$(check) ' : ''}Drafts Only`,
+        description: 'Show only local draft revisions',
+        filter: 'draft',
+      },
+      {
+        label: `${currentFilter === 'published' ? '$(check) ' : ''}Published Only`,
+        description: 'Show only published revisions',
+        filter: 'published',
+      },
+    ];
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: 'Filter history revisions',
+    });
+
+    if (!selected) {
+      return;
+    }
+    filter = selected.filter;
   }
 
-  if (!localExists) {
-    await vscode.window.showTextDocument(historicalUri);
-    return;
+  ctx.historyProvider?.setFilter(filter);
+  if (ctx.historyTreeView) {
+    ctx.historyTreeView.description = historyFilterDescription(filter);
   }
 
-  const title = `${fileName} (${element.commitSpec} ↔ Working Tree)`;
-  await vscode.commands.executeCommand('vscode.diff', historicalUri, localUri, title);
+  const config = vscode.workspace.getConfiguration('flexvault');
+  if (typeof config.update === 'function') {
+    void config.update('historyFilter', filter, vscode.ConfigurationTarget.Global);
+  }
 }

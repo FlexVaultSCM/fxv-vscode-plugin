@@ -54,6 +54,8 @@ export interface StatusOptions {
 export interface HistoryOptions {
   readonly count?: number;
   readonly branch?: string;
+  readonly publishedOnly?: boolean;
+  readonly draftOnly?: boolean;
 }
 
 export type RevertTarget =
@@ -183,6 +185,11 @@ export class FxvCommands {
     }
     if (options.branch) {
       argv.push('-b', options.branch);
+    }
+    if (options.publishedOnly) {
+      argv.push('--published-only');
+    } else if (options.draftOnly) {
+      argv.push('--draft-only');
     }
     return this.runner.runJson<HistoryPayload>({ argv, commandClass: 'read', envelope: true }, run);
   }

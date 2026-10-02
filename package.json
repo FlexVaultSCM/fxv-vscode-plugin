@@ -185,6 +185,12 @@
         "category": "FlexVault"
       },
       {
+        "command": "flexvault.historyFilter",
+        "title": "Filter History...",
+        "category": "FlexVault",
+        "icon": "$(filter)"
+      },
+      {
         "command": "flexvault.historyRefresh",
         "title": "Refresh History",
         "category": "FlexVault",
@@ -260,9 +266,14 @@
       ],
       "view/title": [
         {
+          "command": "flexvault.historyFilter",
+          "when": "view == flexvaultHistory",
+          "group": "navigation@1"
+        },
+        {
           "command": "flexvault.historyRefresh",
           "when": "view == flexvaultHistory",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -366,6 +377,10 @@
         {
           "command": "flexvault.historyCopyRevision",
           "when": "false"
+        },
+        {
+          "command": "flexvault.historyFilter",
+          "when": "flexvault.enabled"
         },
         {
           "command": "flexvault.historyRefresh",
@@ -472,6 +487,22 @@
           "minimum": 1,
           "scope": "window",
           "markdownDescription": "Number of commits requested with `history -n` for the History view."
+        },
+        "flexvault.historyFilter": {
+          "type": "string",
+          "enum": [
+            "all",
+            "draft",
+            "published"
+          ],
+          "enumDescriptions": [
+            "Show both draft and published revisions",
+            "Show local draft revisions only",
+            "Show published revisions only"
+          ],
+          "default": "all",
+          "scope": "window",
+          "markdownDescription": "Filter revisions shown in the History view (all revisions, draft revisions only, or published revisions only)."
         },
         "flexvault.logLevel": {
           "type": "string",

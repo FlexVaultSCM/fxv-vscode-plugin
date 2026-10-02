@@ -120,4 +120,22 @@ describe('FxvContentProvider and binary detection', () => {
       'Failed to load missing.txt at main.1: File not found in revision',
     );
   });
+
+  it('returns empty string when file does not exist at revision', async () => {
+    const fxvMock = {
+      cat: vi.fn().mockResolvedValue({
+        ok: false,
+        message:
+          "Workspace error: Internal error: 'scripts\\compose_trailer_soundtrack.py' does not exist at revision main.200",
+        exitCode: 1,
+      }),
+    } as unknown as FxvCommands;
+
+    const provider = new FxvContentProvider(fxvMock, cache);
+    const uri = toFxvUri('scripts/compose_trailer_soundtrack.py', 'main.200');
+    const token = new vscode.CancellationTokenSource().token;
+
+    const content = await provider.provideTextDocumentContent(uri, token);
+    expect(content).toBe('');
+  });
 });
