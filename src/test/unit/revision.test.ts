@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseSpec, specFromCommitInfo, specFromRevision } from '../../cli/revision';
+import {
+  parseSpec,
+  resolvePreviousRevisionSpec,
+  resolvePreviousRevisionSpecFromSpec,
+  specFromCommitInfo,
+  specFromRevision,
+} from '../../cli/revision';
 
 describe('specFromCommitInfo', () => {
   it('writes a published revision as branch.revision', () => {
@@ -63,5 +69,85 @@ describe('parseSpec', () => {
     expect(parseSpec('main')).toBeUndefined();
     expect(parseSpec('main.head')).toBeUndefined();
     expect(parseSpec('')).toBeUndefined();
+  });
+});
+
+describe('resolvePreviousRevisionSpec', () => {
+  it('resolves draft with draft_revision > 1 to preceding draft', () => {
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'draft',
+        revision: 11,
+        draft_revision: 3,
+      }),
+    ).toBe('main.11.2');
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'draft',
+        draft_revision: 2,
+      }),
+    ).toBe('main.-.1');
+  });
+
+  it('resolves draft with draft_revision == 1 to published parent if parented', () => {
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'draft',
+        revision: 11,
+        draft_revision: 1,
+      }),
+    ).toBe('main.11');
+  });
+
+  it('returns undefined for unparented draft 1', () => {
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'draft',
+        draft_revision: 1,
+      }),
+    ).toBeUndefined();
+  });
+
+  it('resolves published revision > 0 to preceding revision', () => {
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'published',
+        revision: 11,
+      }),
+    ).toBe('main.10');
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'published',
+        revision: 1,
+      }),
+    ).toBe('main.0');
+  });
+
+  it('returns undefined for root published revision 0', () => {
+    expect(
+      resolvePreviousRevisionSpec({
+        branch: 'main',
+        type: 'published',
+        revision: 0,
+      }),
+    ).toBeUndefined();
+  });
+});
+
+describe('resolvePreviousRevisionSpecFromSpec', () => {
+  it('resolves previous specs for draft and published strings', () => {
+    expect(resolvePreviousRevisionSpecFromSpec('main.11.3')).toBe('main.11.2');
+    expect(resolvePreviousRevisionSpecFromSpec('main.11.1')).toBe('main.11');
+    expect(resolvePreviousRevisionSpecFromSpec('main.-.2')).toBe('main.-.1');
+    expect(resolvePreviousRevisionSpecFromSpec('main.-.1')).toBeUndefined();
+    expect(resolvePreviousRevisionSpecFromSpec('main.11')).toBe('main.10');
+    expect(resolvePreviousRevisionSpecFromSpec('main.0')).toBeUndefined();
+    expect(resolvePreviousRevisionSpecFromSpec('not-a-spec')).toBeUndefined();
   });
 });

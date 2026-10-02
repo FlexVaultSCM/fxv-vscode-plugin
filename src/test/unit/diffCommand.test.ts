@@ -145,6 +145,50 @@ describe('diffAgainstBaseCommand', () => {
     expect(execSpy).toHaveBeenCalledWith('vscode.open', fileUri);
   });
 
+  it('opens unpublished added file directly when clicked from SCM unpublished group', async () => {
+    const parentedStatus: StatusPayload = {
+      current_branch: 'main',
+      head_commit: {
+        state: 'parented_draft',
+        local_snapshot: {
+          commit: { branch: 'main', type: 'draft', revision: 200, draft_revision: 1 },
+          author_id: 'u',
+          author_display_name: 'U',
+          author_details: { type: 'Local' },
+          timestamp_millis_since_epoch_utc: 1000,
+        },
+        published_head: {
+          commit: { branch: 'main', type: 'published', revision: 200 },
+          author_id: 'u',
+          author_display_name: 'U',
+          author_details: { type: 'Local' },
+          timestamp_millis_since_epoch_utc: 1000,
+        },
+      },
+      files: [{ path: 'scripts/compose_trailer_soundtrack.py', unpublished_state: 'added' }],
+      file_change_counts: { total: 1, unpublished: 1, workspace_need_snapshot: 0 },
+    };
+    (ctx.statusCache as { status: StatusPayload }).status = parentedStatus;
+
+    const execSpy = vi.spyOn(vscode.commands, 'executeCommand').mockResolvedValue(undefined);
+    const fileUri = vscode.Uri.joinPath(rootUri, 'scripts/compose_trailer_soundtrack.py');
+    const descriptor: ResourceDescriptor = {
+      path: 'scripts/compose_trailer_soundtrack.py',
+      group: 'unpublished',
+      badge: 'A',
+      tooltip: 'Unpublished: Added',
+      strikeThrough: false,
+      isDeleted: false,
+      themeColorId: 'flexvault.addedResourceForeground',
+      changeKind: 'added',
+      file: { path: 'scripts/compose_trailer_soundtrack.py', unpublished_state: 'added' },
+    };
+
+    await diffAgainstBaseCommand(ctx, fileUri, descriptor);
+
+    expect(execSpy).toHaveBeenCalledWith('vscode.open', fileUri);
+  });
+
   it('opens newly added file directly when invoked from editor/title with no descriptor', async () => {
     // Override head_commit to empty_branch so there is no base revision
     const emptyStatus: StatusPayload = {
@@ -266,5 +310,38 @@ describe('FlexVaultQuickDiffProvider', () => {
     expect(
       provider.provideOriginalResource(vscode.Uri.parse('untitled:new.txt'), token),
     ).toBeUndefined();
+  });
+
+  it('returns undefined for unpublished added file with no previous published revision', () => {
+    const statusCache = {
+      status: {
+        current_branch: 'main',
+        head_commit: {
+          state: 'parented_draft',
+          local_snapshot: {
+            commit: { branch: 'main', type: 'draft', revision: 200, draft_revision: 1 },
+            author_id: 'u',
+            author_display_name: 'U',
+            author_details: { type: 'Local' },
+            timestamp_millis_since_epoch_utc: 1000,
+          },
+          published_head: {
+            commit: { branch: 'main', type: 'published', revision: 200 },
+            author_id: 'u',
+            author_display_name: 'U',
+            author_details: { type: 'Local' },
+            timestamp_millis_since_epoch_utc: 1000,
+          },
+        },
+        files: [{ path: 'scripts/compose_trailer_soundtrack.py', unpublished_state: 'added' }],
+        file_change_counts: { total: 1, unpublished: 1, workspace_need_snapshot: 0 },
+      } as StatusPayload,
+    } as unknown as StatusCache;
+
+    const provider = new FlexVaultQuickDiffProvider(rootUri, statusCache);
+    const fileUri = vscode.Uri.joinPath(rootUri, 'scripts/compose_trailer_soundtrack.py');
+    const token = new vscode.CancellationTokenSource().token;
+
+    expect(provider.provideOriginalResource(fileUri, token)).toBeUndefined();
   });
 });

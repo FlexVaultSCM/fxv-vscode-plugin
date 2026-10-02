@@ -6,6 +6,7 @@ import { clearCacheCommand, diffAgainstBaseCommand } from './diff';
 import { gotoCommand } from './goto';
 import {
   historyCopyRevisionCommand,
+  historyFilterCommand,
   historyGotoRevisionCommand,
   historyOpenChangeCommand,
   historyShowChangesCommand,
@@ -135,6 +136,10 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
 
     vscode.commands.registerCommand('flexvault.historyRefresh', () => {
       ctxProvider().historyProvider?.refresh();
+    }),
+
+    vscode.commands.registerCommand('flexvault.historyFilter', async (...args: unknown[]) => {
+      await historyFilterCommand(ctxProvider(), args[0]);
     }),
   );
 

@@ -79,13 +79,18 @@ export async function diffAgainstBaseCommand(
   const baseSpec = resolveDiffBaseRevision({
     file,
     group: descriptor?.group,
+    changeKind: descriptor?.changeKind,
     status,
   });
 
   if (!baseSpec) {
     // If newly added without any prior base revision, there is nothing to diff against,
     // so just open the file directly regardless of how the command was invoked.
-    if (descriptor?.changeKind === 'added' || file?.workspace_state === 'added') {
+    if (
+      descriptor?.changeKind === 'added' ||
+      file?.workspace_state === 'added' ||
+      file?.unpublished_state === 'added'
+    ) {
       await vscode.commands.executeCommand('vscode.open', uri);
       return;
     }

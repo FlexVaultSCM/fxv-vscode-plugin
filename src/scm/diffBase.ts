@@ -1,5 +1,11 @@
 import { specFromCommitInfo } from '../cli/revision';
-import type { CommitRef, FileStatus, HeadCommit, StatusPayload } from '../cli/types.generated';
+import type {
+  ChangeKind,
+  CommitRef,
+  FileStatus,
+  HeadCommit,
+  StatusPayload,
+} from '../cli/types.generated';
 import type { ResourceGroupType } from './resources';
 
 export function getLocalSnapshot(head: HeadCommit | undefined): CommitRef | undefined {
@@ -34,14 +40,27 @@ function resolveLocalThenPublished(head: HeadCommit | undefined): string | undef
  * - Unpublished axis: diff against published head first, falling back to local snapshot (unparented draft or new branch).
  * - Conflicts: prefer published head, falling back to local snapshot.
  * - General/unspecified: infer axis from file status or default to published head -> local snapshot.
+ *
+ * Files that were newly added on the target axis (or without a prior revision) have nothing to diff against,
+ * returning undefined so callers can open them directly.
  */
 export function resolveDiffBaseRevision(options: {
   readonly file?: FileStatus | undefined;
   readonly group?: ResourceGroupType | undefined;
+  readonly changeKind?: ChangeKind | undefined;
   readonly status?: StatusPayload | undefined;
 }): string | undefined {
-  const { file, group, status } = options;
+  const { file, group, changeKind, status } = options;
   if (!status || !status.head_commit) {
+    return undefined;
+  }
+
+  // Newly added on the target axis: no base revision exists
+  if (
+    changeKind === 'added' ||
+    (group === 'workspace' && file?.workspace_state === 'added') ||
+    (group === 'unpublished' && file?.unpublished_state === 'added')
+  ) {
     return undefined;
   }
 
@@ -56,10 +75,16 @@ export function resolveDiffBaseRevision(options: {
 
   // 2. Infer from file status if group was not explicitly provided (e.g. from editor title diff)
   if (file?.workspace_state) {
+    if (file.workspace_state === 'added') {
+      return undefined;
+    }
     return resolveLocalThenPublished(status.head_commit);
   }
 
   if (file?.unpublished_state) {
+    if (file.unpublished_state === 'added') {
+      return undefined;
+    }
     return resolvePublishedThenLocal(status.head_commit);
   }
 

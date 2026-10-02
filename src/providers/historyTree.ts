@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import type { FxvCommands } from '../cli/commands';
 import type { Logger } from '../cli/logger';
-import { specFromCommitInfo, specFromRevision } from '../cli/revision';
+import { resolvePreviousRevisionSpec, specFromCommitInfo, specFromRevision } from '../cli/revision';
 import type { RunResult } from '../cli/runner';
 import type { StatusPayload } from '../cli/types.generated';
 import { getLocalSnapshot } from '../scm/diffBase';
@@ -29,6 +29,8 @@ const CHANGE_KIND_ICON: Record<ChangeElement['action'], string> = {
   maybe_changed: 'diff-modified',
 };
 
+export type HistoryFilter = 'all' | 'draft' | 'published';
+
 /**
  * TreeDataProvider for the History view. Root elements are
  * `history -n <historyLimit>` entries; expanding one loads its
@@ -47,6 +49,7 @@ export class HistoryTreeProvider
   // Keyed by revision spec so getParent (required by TreeView.reveal) can
   // find a change leaf's owning commit without re-fetching it.
   private readonly commitsBySpec = new Map<string, CommitElement>();
+  private filter: HistoryFilter;
 
   // Refetched alongside the commit list itself (loadCommits), rather than
   // read from the shared StatusCache, so the "Synced" marker is always
@@ -66,7 +69,21 @@ export class HistoryTreeProvider
     private readonly fxv: FxvCommands,
     private readonly getHistoryLimit: () => number,
     private readonly log?: Logger,
-  ) {}
+    initialFilter: HistoryFilter = 'all',
+  ) {
+    this.filter = initialFilter;
+  }
+
+  getFilter(): HistoryFilter {
+    return this.filter;
+  }
+
+  setFilter(filter: HistoryFilter): void {
+    if (this.filter !== filter) {
+      this.filter = filter;
+      this.refresh();
+    }
+  }
 
   refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
@@ -88,8 +105,21 @@ export class HistoryTreeProvider
   }
 
   private async loadCommits(): Promise<CommitElement[]> {
+    const historyOptions: {
+      count: number;
+      publishedOnly?: boolean;
+      draftOnly?: boolean;
+    } = {
+      count: this.getHistoryLimit(),
+    };
+    if (this.filter === 'published') {
+      historyOptions.publishedOnly = true;
+    } else if (this.filter === 'draft') {
+      historyOptions.draftOnly = true;
+    }
+
     const [historyResult, statusResult] = await Promise.all([
-      this.fxv.history({ count: this.getHistoryLimit() }),
+      this.fxv.history(historyOptions),
       this.fxv.status({ skipRemoteUpdate: true }),
     ]);
 
@@ -99,7 +129,12 @@ export class HistoryTreeProvider
       this.log?.error(`Failed to load FlexVault history: ${historyResult.message}`);
       return [];
     }
-    const commits = commitsFromHistoryPayload(historyResult.payload);
+    let commits = commitsFromHistoryPayload(historyResult.payload);
+    if (this.filter === 'published') {
+      commits = commits.filter((c) => c.commit.commit.type === 'published');
+    } else if (this.filter === 'draft') {
+      commits = commits.filter((c) => c.commit.commit.type === 'draft');
+    }
     this.commitsBySpec.clear();
     for (const commit of commits) {
       this.commitsBySpec.set(commit.spec, commit);
@@ -127,13 +162,18 @@ export class HistoryTreeProvider
     return specFromCommitInfo(commit);
   }
 
+  private resolvePreviousCommitSpec(element: CommitElement): string | undefined {
+    return resolvePreviousRevisionSpec(element.commit.commit);
+  }
+
   private async loadChanges(element: CommitElement): Promise<ChangeElement[]> {
     const result = await this.fxv.changeinfo(element.spec);
     if (!result.ok) {
       this.log?.error(`Failed to load changes for ${element.spec}: ${result.message}`);
       return [];
     }
-    return changesFromChangeInfoPayload(element.spec, result.payload);
+    const previousSpec = this.resolvePreviousCommitSpec(element);
+    return changesFromChangeInfoPayload(element.spec, result.payload, previousSpec);
   }
 
   private commitTreeItem(element: CommitElement): vscode.TreeItem {

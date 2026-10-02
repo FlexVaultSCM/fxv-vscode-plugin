@@ -113,6 +113,42 @@ describe('diffBase resolution', () => {
       });
       expect(specUnpublished).toBe('main.10');
     });
+
+    it('returns undefined for unpublished added file with no previous revision', () => {
+      const spec = resolveDiffBaseRevision({
+        file: { path: 'scripts/new.py', unpublished_state: 'added' },
+        group: 'unpublished',
+        status: parentedStatus,
+      });
+      expect(spec).toBeUndefined();
+    });
+
+    it('returns undefined for workspace added file', () => {
+      const spec = resolveDiffBaseRevision({
+        file: { path: 'new.txt', workspace_state: 'added' },
+        group: 'workspace',
+        status: parentedStatus,
+      });
+      expect(spec).toBeUndefined();
+    });
+
+    it('returns undefined when changeKind is added', () => {
+      const spec = resolveDiffBaseRevision({
+        changeKind: 'added',
+        group: 'unpublished',
+        status: parentedStatus,
+      });
+      expect(spec).toBeUndefined();
+    });
+
+    it('returns local snapshot for workspace diff when file was added in draft but modified in workspace', () => {
+      const spec = resolveDiffBaseRevision({
+        file: { path: 'draft_added.txt', unpublished_state: 'added', workspace_state: 'modified' },
+        group: 'workspace',
+        status: parentedStatus,
+      });
+      expect(spec).toBe('main.10.5');
+    });
   });
 
   describe('resolveQuickDiffBaseRevision', () => {
