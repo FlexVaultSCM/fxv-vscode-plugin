@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.8.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.7.0...v0.8.0) (2026-10-02)
+
+
+### Features
+
+* diff history changes against previous revision and add history filtering ([#31](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/31)) ([aa36f2b](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/aa36f2bf5a26df6a6af56394e2d7723cd2240347))
+
 ## [0.7.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.6.0...v0.7.0) (2026-09-24)
 
 
