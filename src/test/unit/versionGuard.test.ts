@@ -20,6 +20,7 @@ describe('the program version gate', () => {
   it('accepts the floor and everything below the ceiling', () => {
     expect(guard().checkProgram('0.11.0').ok).toBe(true);
     expect(guard().checkProgram('0.11.5').ok).toBe(true);
+    expect(guard().checkProgram('0.12.0').ok).toBe(true);
   });
 
   it('blocks below the floor and points at the CLI', () => {
@@ -33,7 +34,7 @@ describe('the program version gate', () => {
   });
 
   it('blocks at the ceiling and points at the extension', () => {
-    const verdict = guard().checkProgram('0.12.0');
+    const verdict = guard().checkProgram('0.13.0');
     expect(verdict).toMatchObject({
       ok: false,
       problem: 'above-ceiling',
@@ -54,7 +55,7 @@ describe('the program version gate', () => {
 
   it('reads a prerelease as its release version, at both ends of the range', () => {
     expect(guard().checkProgram('0.11.0-rc1').ok).toBe(true);
-    expect(guard().checkProgram('0.12.0-rc1')).toMatchObject({
+    expect(guard().checkProgram('0.13.0-rc1')).toMatchObject({
       ok: false,
       problem: 'above-ceiling',
     });
