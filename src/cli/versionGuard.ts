@@ -38,8 +38,8 @@ export function parseSemVer(text: string): SemVer | undefined {
 
 /**
  * Compares the release triple and ignores any prerelease or build suffix, so
- * `0.9.0-rc1` is treated as `0.9.0` and accepted, while `0.10.0-rc1` is treated
- * as `0.10.0` and blocked. A prerelease of a supported version is close enough
+ * `0.11.0-rc1` is treated as `0.11.0` and accepted, while `0.13.0-rc1` is treated
+ * as `0.13.0` and blocked. A prerelease of a supported version is close enough
  * to run; a prerelease of the next breaking one is not.
  */
 function compare(left: SemVer, right: SemVer): number {
