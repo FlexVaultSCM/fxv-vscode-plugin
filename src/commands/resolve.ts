@@ -1,11 +1,10 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
 
 import type { ResolveStrategy, ResolveTarget } from '../cli/commands';
-import type { FlexVaultResourceState } from '../scm/provider';
 import { assertSafeToMutate } from '../state/safetyGuards';
 import { withMutationProgress } from '../ui/progress';
 import { handleCommandFailure } from './errorHandler';
+import { collectResourceItems, extractPaths } from './resources';
 import type { CommandContext } from './types';
 
 export async function resolveCommand(
@@ -86,52 +85,4 @@ export async function resolveCommand(
   }
 
   await ctx.statusCache?.refresh({ skipRemoteUpdate: true });
-}
-
-function collectResourceItems(args: unknown[]): unknown[] {
-  const items: unknown[] = [];
-  for (const arg of args) {
-    if (Array.isArray(arg)) {
-      items.push(...collectResourceItems(arg));
-    } else if (arg !== undefined && arg !== null) {
-      items.push(arg);
-    }
-  }
-  return items;
-}
-
-function extractPaths(ctx: CommandContext, items: unknown[]): string[] {
-  const paths: string[] = [];
-  for (const item of items) {
-    const p = extractSinglePath(ctx, item);
-    if (p && !paths.includes(p)) {
-      paths.push(p);
-    }
-  }
-  return paths;
-}
-
-function extractSinglePath(ctx: CommandContext, item: unknown): string | undefined {
-  if (!item || typeof item !== 'object') {
-    return undefined;
-  }
-  if ('descriptor' in item) {
-    const desc = (item as FlexVaultResourceState).descriptor;
-    if (desc?.path) {
-      return desc.path;
-    }
-  }
-  if ('resourceUri' in item) {
-    const resUri = (item as vscode.SourceControlResourceState).resourceUri;
-    if (resUri && ctx.rootUri) {
-      const rel = path.relative(ctx.rootUri.fsPath, resUri.fsPath);
-      return rel.replace(/\\/g, '/');
-    }
-  }
-  if ('fsPath' in item && ctx.rootUri) {
-    const uri = item as vscode.Uri;
-    const rel = path.relative(ctx.rootUri.fsPath, uri.fsPath);
-    return rel.replace(/\\/g, '/');
-  }
-  return undefined;
 }

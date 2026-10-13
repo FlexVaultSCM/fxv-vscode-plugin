@@ -146,4 +146,58 @@ describe('FetchCoordinator', () => {
     coordinator.dispose();
     vi.useRealTimers();
   });
+
+  it('notifies onFetchError when runner returns ok: false', async () => {
+    vi.useFakeTimers();
+    let capturedError: unknown;
+    const coordinator = new FetchCoordinator(
+      () => Promise.resolve({ ok: false, problem: 'network disconnected' }),
+      {
+        getPeriodSeconds: () => 10,
+        onFetchError: (err) => {
+          capturedError = err;
+        },
+      },
+    );
+
+    coordinator.start();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(capturedError).toBeDefined();
+    expect((capturedError as Error).message).toContain('network disconnected');
+
+    coordinator.dispose();
+    vi.useRealTimers();
+  });
+
+  it('does not invoke callbacks or reschedule if disposed during in-flight fetch', async () => {
+    vi.useFakeTimers();
+    let resolveFetch: (() => void) | undefined;
+    let successCalled = false;
+
+    const coordinator = new FetchCoordinator(
+      () =>
+        new Promise((res) => {
+          resolveFetch = () =>
+            res({ ok: true, payload: { bytes_downloaded: 100, repaired_files: [] } });
+        }),
+      {
+        getPeriodSeconds: () => 10,
+        onFetchSuccess: () => {
+          successCalled = true;
+        },
+      },
+    );
+
+    coordinator.start();
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // Dispose while fetch is in flight
+    coordinator.dispose();
+
+    resolveFetch!();
+    await Promise.resolve();
+
+    expect(successCalled).toBe(false);
+    vi.useRealTimers();
+  });
 });

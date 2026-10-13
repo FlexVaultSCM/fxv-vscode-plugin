@@ -70,11 +70,18 @@ export class FetchCoordinator {
     this.inFlight = true;
     try {
       const res = await this.runner();
+      if (this.disposed) {
+        return;
+      }
       if (res.ok && res.payload) {
         this.options.onFetchSuccess?.(res.payload);
+      } else if (!res.ok) {
+        this.options.onFetchError?.(new Error(res.problem ?? 'Fetch failed'));
       }
     } catch (err: unknown) {
-      this.options.onFetchError?.(err);
+      if (!this.disposed) {
+        this.options.onFetchError?.(err);
+      }
     } finally {
       this.inFlight = false;
       this.reschedule();
@@ -82,6 +89,7 @@ export class FetchCoordinator {
   }
 
   private reschedule(): void {
+    this.stop();
     if (this.disposed) {
       return;
     }
