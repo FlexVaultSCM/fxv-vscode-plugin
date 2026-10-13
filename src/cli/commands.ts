@@ -72,8 +72,32 @@ export interface ResumeOptions {
   readonly full?: boolean;
 }
 
+export interface FetchOptions {
+  readonly repair?: boolean;
+}
+
+export interface FetchPayload {
+  readonly bytes_downloaded: number;
+  readonly repaired_files: readonly string[];
+}
+
 export class FxvCommands {
   constructor(private readonly runner: CliRunner) {}
+
+  fetch(options: FetchOptions = {}, run: RunOptions = {}): Promise<RunResult<FetchPayload>> {
+    const argv = ['fetch'];
+    if (options.repair) {
+      argv.push('--repair');
+    }
+    return this.runner.runJson<FetchPayload>(
+      {
+        argv,
+        commandClass: 'locking-read',
+        envelope: true,
+      },
+      run,
+    );
+  }
 
   status(options: StatusOptions = {}, run: RunOptions = {}): Promise<RunResult<StatusPayload>> {
     const argv = ['status'];

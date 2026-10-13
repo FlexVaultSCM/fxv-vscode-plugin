@@ -103,6 +103,7 @@ This extension contributes the following settings under `flexvault.*`:
 | `flexvault.readTimeoutSeconds`  | `number`   | `60`     | Timeout for read-only CLI commands (`status`, `history`, `cat`). Set to `0` to disable.                                          |
 | `flexvault.writeTimeoutSeconds` | `number`   | `0`      | Timeout for mutating commands (`sync`, `goto`, `revert`). Defaults to `0` (disabled) to avoid terminating operations mid-flight. |
 | `flexvault.refreshDebounceMs`   | `number`   | `300`    | Coalescing debounce interval for automatic background status refreshes.                                                          |
+| `flexvault.fetchPeriodSeconds`  | `number`   | `120`    | Polling period in seconds for periodic fxv fetch to pull remote metadata. Set to `0` to disable.                                 |
 | `flexvault.watchEnabled`        | `boolean`  | `true`   | Enable or disable the file system watcher.                                                                                       |
 | `flexvault.watchExclude`        | `string[]` | `[]`     | Additional glob patterns excluded from the status watcher.                                                                       |
 | `flexvault.contentCacheSizeMB`  | `number`   | `512`    | Maximum size in megabytes for the on-disk `cat` diff content cache.                                                              |

@@ -452,6 +452,13 @@
           "scope": "window",
           "markdownDescription": "How long to wait for a command that changes the workspace, such as `sync` or `goto`. The command is never stopped: FlexVault gives up waiting and reports it, because stopping a write partway leaves the workspace inconsistent. `0` waits indefinitely."
         },
+        "flexvault.fetchPeriodSeconds": {
+          "type": "number",
+          "default": 120,
+          "minimum": 0,
+          "scope": "window",
+          "markdownDescription": "Period in seconds for automatically running `fxv fetch` in the background to pull down remote metadata. `0` disables periodic background fetch."
+        },
         "flexvault.refreshDebounceMs": {
           "type": "number",
           "default": 300,
