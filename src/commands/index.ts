@@ -63,27 +63,19 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
     }),
 
     vscode.commands.registerCommand('flexvault.revert', async (...args: unknown[]) => {
-      const resource = args[0] as Parameters<typeof revertCommand>[1];
-      const selected = args[1] as Parameters<typeof revertCommand>[2];
-      await revertCommand(ctxProvider(), resource, selected);
+      await revertCommand(ctxProvider(), ...args);
     }),
 
     vscode.commands.registerCommand('flexvault.resolveMine', async (...args: unknown[]) => {
-      const resource = args[0] as Parameters<typeof resolveCommand>[2];
-      const selected = args[1] as Parameters<typeof resolveCommand>[3];
-      await resolveCommand(ctxProvider(), 'mine', resource, selected);
+      await resolveCommand(ctxProvider(), 'mine', ...args);
     }),
 
     vscode.commands.registerCommand('flexvault.resolveTheirs', async (...args: unknown[]) => {
-      const resource = args[0] as Parameters<typeof resolveCommand>[2];
-      const selected = args[1] as Parameters<typeof resolveCommand>[3];
-      await resolveCommand(ctxProvider(), 'theirs', resource, selected);
+      await resolveCommand(ctxProvider(), 'theirs', ...args);
     }),
 
     vscode.commands.registerCommand('flexvault.resolveUndo', async (...args: unknown[]) => {
-      const resource = args[0] as Parameters<typeof resolveCommand>[2];
-      const selected = args[1] as Parameters<typeof resolveCommand>[3];
-      await resolveCommand(ctxProvider(), 'undo', resource, selected);
+      await resolveCommand(ctxProvider(), 'undo', ...args);
     }),
 
     vscode.commands.registerCommand('flexvault.login', async () => {

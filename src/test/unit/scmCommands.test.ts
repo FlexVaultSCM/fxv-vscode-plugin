@@ -311,6 +311,33 @@ describe('revertCommand', () => {
     expect(harness.refreshes.length).toBe(1);
   });
 
+  it('reverts multiple files when resources are passed as rest arguments (multi-selection)', async () => {
+    const harness = createMockHarness();
+    vi.spyOn(vscode.window, 'showWarningMessage').mockResolvedValue('Revert' as never);
+
+    const resource1 = { descriptor: { path: 'a.txt' } } as unknown as FlexVaultResourceState;
+    const resource2 = { descriptor: { path: 'b.txt' } } as unknown as FlexVaultResourceState;
+    const resource3 = { descriptor: { path: 'c.txt' } } as unknown as FlexVaultResourceState;
+
+    await revertCommand(harness.ctx, resource1, resource2, resource3);
+
+    expect(harness.revertCalls).toEqual([{ paths: ['a.txt', 'b.txt', 'c.txt'] }]);
+    expect(harness.refreshes.length).toBe(1);
+  });
+
+  it('reverts multiple files when resources are passed as a single array', async () => {
+    const harness = createMockHarness();
+    vi.spyOn(vscode.window, 'showWarningMessage').mockResolvedValue('Revert' as never);
+
+    const resource1 = { descriptor: { path: 'a.txt' } } as unknown as FlexVaultResourceState;
+    const resource2 = { descriptor: { path: 'b.txt' } } as unknown as FlexVaultResourceState;
+
+    await revertCommand(harness.ctx, [resource1, resource2]);
+
+    expect(harness.revertCalls).toEqual([{ paths: ['a.txt', 'b.txt'] }]);
+    expect(harness.refreshes.length).toBe(1);
+  });
+
   it('reverts all when no resources are provided', async () => {
     const harness = createMockHarness();
     vi.spyOn(vscode.window, 'showWarningMessage').mockResolvedValue('Revert All Changes' as never);
@@ -342,6 +369,23 @@ describe('resolveCommand', () => {
 
     expect(harness.resolveCalls).toEqual([
       { strategy: 'mine', target: { paths: ['conflict.txt'] } },
+    ]);
+    expect(harness.refreshes.length).toBe(1);
+  });
+
+  it('resolves multiple files when resources are passed as rest arguments', async () => {
+    const harness = createMockHarness();
+    const resource1 = {
+      descriptor: { path: 'conflict1.txt' },
+    } as unknown as FlexVaultResourceState;
+    const resource2 = {
+      descriptor: { path: 'conflict2.txt' },
+    } as unknown as FlexVaultResourceState;
+
+    await resolveCommand(harness.ctx, 'mine', resource1, resource2);
+
+    expect(harness.resolveCalls).toEqual([
+      { strategy: 'mine', target: { paths: ['conflict1.txt', 'conflict2.txt'] } },
     ]);
     expect(harness.refreshes.length).toBe(1);
   });
