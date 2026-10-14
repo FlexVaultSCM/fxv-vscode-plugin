@@ -114,6 +114,12 @@
         "category": "FlexVault"
       },
       {
+        "command": "flexvault.openFile",
+        "title": "Open File",
+        "category": "FlexVault",
+        "icon": "$(go-to-file)"
+      },
+      {
         "command": "flexvault.revert",
         "title": "Revert",
         "category": "FlexVault",
@@ -232,8 +238,18 @@
       ],
       "scm/resourceState/context": [
         {
-          "command": "flexvault.revert",
+          "command": "flexvault.openFile",
           "group": "inline@1",
+          "when": "scmProvider == flexvault && flexvault.enabled"
+        },
+        {
+          "command": "flexvault.openFile",
+          "group": "0_navigation",
+          "when": "scmProvider == flexvault && flexvault.enabled"
+        },
+        {
+          "command": "flexvault.revert",
+          "group": "inline@2",
           "when": "scmProvider == flexvault && flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible"
         },
         {
@@ -325,6 +341,10 @@
         {
           "command": "flexvault.branchNew",
           "when": "flexvault.enabled && !flexvault.busy && !flexvault.interrupted && !flexvault.cliIncompatible && !flexvault.statusError"
+        },
+        {
+          "command": "flexvault.openFile",
+          "when": "false"
         },
         {
           "command": "flexvault.revert",

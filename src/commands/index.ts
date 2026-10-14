@@ -11,6 +11,7 @@ import {
   historyOpenChangeCommand,
   historyShowChangesCommand,
 } from './history';
+import { openFileCommand } from './openFile';
 import { publishCommand } from './publish';
 import { resumeCommand } from './recovery';
 import { resolveCommand } from './resolve';
@@ -60,6 +61,10 @@ export function registerCommands(ctxProvider: () => CommandContext): vscode.Disp
     vscode.commands.registerCommand('flexvault.branchNew', async (...args: unknown[]) => {
       const name = typeof args[0] === 'string' ? args[0] : undefined;
       await branchNewCommand(ctxProvider(), name);
+    }),
+
+    vscode.commands.registerCommand('flexvault.openFile', async (...args: unknown[]) => {
+      await openFileCommand(ctxProvider(), ...args);
     }),
 
     vscode.commands.registerCommand('flexvault.revert', async (...args: unknown[]) => {

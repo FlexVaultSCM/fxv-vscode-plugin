@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 
 import { loginCommand, logoutCommand } from '../../commands/auth';
 import { gotoCommand } from '../../commands/goto';
+import { openFileCommand } from '../../commands/openFile';
 import { resolveCommand } from '../../commands/resolve';
 import { revertCommand } from '../../commands/revert';
 import { snapshotCommand } from '../../commands/snapshot';
@@ -434,5 +435,107 @@ describe('loginCommand and logoutCommand', () => {
     expect(harness.getLogoutCalls()).toBe(1);
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('bob'));
     expect(harness.refreshes.some((r) => r.skipRemoteUpdate === false)).toBe(true);
+  });
+});
+
+describe('openFileCommand', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('opens a single file resource with vscode.open', async () => {
+    const harness = createMockHarness();
+    const uri = vscode.Uri.file('/workspace/src/app.ts');
+    const resource = {
+      resourceUri: uri,
+      descriptor: { path: 'src/app.ts', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+
+    await openFileCommand(harness.ctx, resource);
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', uri);
+  });
+
+  it('opens multiple files when resources are passed as rest arguments (multi-selection)', async () => {
+    const harness = createMockHarness();
+    const uri1 = vscode.Uri.file('/workspace/a.txt');
+    const uri2 = vscode.Uri.file('/workspace/b.txt');
+    const resource1 = {
+      resourceUri: uri1,
+      descriptor: { path: 'a.txt', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+    const resource2 = {
+      resourceUri: uri2,
+      descriptor: { path: 'b.txt', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+
+    await openFileCommand(harness.ctx, resource1, resource2);
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', uri1);
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', uri2);
+  });
+
+  it('opens multiple files when resources are passed as an array', async () => {
+    const harness = createMockHarness();
+    const uri1 = vscode.Uri.file('/workspace/a.txt');
+    const uri2 = vscode.Uri.file('/workspace/b.txt');
+    const resource1 = {
+      resourceUri: uri1,
+      descriptor: { path: 'a.txt', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+    const resource2 = {
+      resourceUri: uri2,
+      descriptor: { path: 'b.txt', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+
+    await openFileCommand(harness.ctx, [resource1, resource2]);
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', uri1);
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', uri2);
+  });
+
+  it('opens activeTextEditor when no resource argument is provided', async () => {
+    const harness = createMockHarness();
+    const docUri = vscode.Uri.file('/workspace/active.ts');
+    vi.spyOn(vscode.window, 'activeTextEditor', 'get').mockReturnValue({
+      document: { uri: docUri },
+    } as unknown as vscode.TextEditor);
+
+    await openFileCommand(harness.ctx);
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', docUri);
+  });
+
+  it('warns and skips opening deleted files', async () => {
+    const harness = createMockHarness();
+    const infoSpy = vi.spyOn(vscode.window, 'showInformationMessage');
+    const uri = vscode.Uri.file('/workspace/deleted.txt');
+    const resource = {
+      resourceUri: uri,
+      descriptor: { path: 'deleted.txt', isDeleted: true },
+    } as unknown as FlexVaultResourceState;
+
+    await openFileCommand(harness.ctx, resource);
+
+    expect(infoSpy).toHaveBeenCalledWith('Cannot open deleted file deleted.txt.');
+    expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith('vscode.open', uri);
+  });
+
+  it('deduplicates targets when multiple items resolve to the same uri', async () => {
+    const harness = createMockHarness();
+    const uri = vscode.Uri.file('/workspace/same.txt');
+    const resource1 = {
+      resourceUri: uri,
+      descriptor: { path: 'same.txt', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+    const resource2 = {
+      resourceUri: uri,
+      descriptor: { path: 'same.txt', isDeleted: false },
+    } as unknown as FlexVaultResourceState;
+
+    await openFileCommand(harness.ctx, resource1, resource2);
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledTimes(1);
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('vscode.open', uri);
   });
 });
