@@ -25,6 +25,7 @@ suite('extension activation', () => {
       'flexvault.goto',
       'flexvault.branchSwitch',
       'flexvault.branchNew',
+      'flexvault.openFile',
       'flexvault.revert',
       'flexvault.resolveMine',
       'flexvault.resolveTheirs',

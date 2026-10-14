@@ -14,7 +14,7 @@ export interface IntegrationRegisterOptions {
   readonly pluginVersion: string;
   /** Minimum compatible fxv version, inclusive (e.g. "0.11.0"). */
   readonly minVersion: string;
-  /** Maximum compatible fxv version, exclusive (e.g. "0.12.0"). */
+  /** Maximum compatible fxv version, exclusive (e.g. "0.13.0"). */
   readonly maxVersion: string;
 }
 import type {
@@ -72,8 +72,32 @@ export interface ResumeOptions {
   readonly full?: boolean;
 }
 
+export interface FetchOptions {
+  readonly repair?: boolean;
+}
+
+export interface FetchPayload {
+  readonly bytes_downloaded: number;
+  readonly repaired_files: readonly string[];
+}
+
 export class FxvCommands {
   constructor(private readonly runner: CliRunner) {}
+
+  fetch(options: FetchOptions = {}, run: RunOptions = {}): Promise<RunResult<FetchPayload>> {
+    const argv = ['fetch'];
+    if (options.repair) {
+      argv.push('--repair');
+    }
+    return this.runner.runJson<FetchPayload>(
+      {
+        argv,
+        commandClass: 'locking-read',
+        envelope: true,
+      },
+      run,
+    );
+  }
 
   status(options: StatusOptions = {}, run: RunOptions = {}): Promise<RunResult<StatusPayload>> {
     const argv = ['status'];

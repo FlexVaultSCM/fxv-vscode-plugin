@@ -1,17 +1,16 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
 
 import type { RevertTarget } from '../cli/commands';
-import type { FlexVaultResourceState } from '../scm/provider';
 import { assertSafeToMutate } from '../state/safetyGuards';
 import { withMutationProgress } from '../ui/progress';
 import { handleCommandFailure } from './errorHandler';
+import { collectResourceItems, extractPaths } from './resources';
 import type { CommandContext } from './types';
 
 export async function revertCommand(
   ctx: CommandContext,
-  resource?: FlexVaultResourceState | vscode.SourceControlResourceState | vscode.Uri,
-  selected?: (FlexVaultResourceState | vscode.SourceControlResourceState | vscode.Uri)[],
+  resource?: unknown,
+  ...selected: unknown[]
 ): Promise<void> {
   if (!ctx.rootUri) {
     void vscode.window.showErrorMessage('No FlexVault workspace is currently open.');
@@ -24,8 +23,10 @@ export async function revertCommand(
     return;
   }
 
-  const hasTargetArgs = resource !== undefined || (Array.isArray(selected) && selected.length > 0);
-  const paths = extractPaths(ctx, resource, selected);
+  const rawArgs = resource !== undefined ? [resource, ...selected] : selected;
+  const items = collectResourceItems(rawArgs);
+  const hasTargetArgs = items.length > 0;
+  const paths = extractPaths(ctx, items);
   let target: RevertTarget;
 
   if (paths.length > 0) {
@@ -60,7 +61,7 @@ export async function revertCommand(
   });
 
   if (!result.ok) {
-    handleCommandFailure('Revert', result, ctx, () => revertCommand(ctx, resource, selected));
+    handleCommandFailure('Revert', result, ctx, () => revertCommand(ctx, resource, ...selected));
     return;
   }
 
@@ -80,42 +81,4 @@ export async function revertCommand(
   }
 
   await ctx.statusCache?.refresh({ skipRemoteUpdate: true });
-}
-
-function extractPaths(ctx: CommandContext, resource?: unknown, selected?: unknown[]): string[] {
-  if (Array.isArray(selected) && selected.length > 0) {
-    return selected
-      .map((item) => extractSinglePath(ctx, item))
-      .filter((p): p is string => p !== undefined);
-  }
-  if (resource) {
-    const p = extractSinglePath(ctx, resource);
-    return p ? [p] : [];
-  }
-  return [];
-}
-
-function extractSinglePath(ctx: CommandContext, item: unknown): string | undefined {
-  if (!item || typeof item !== 'object') {
-    return undefined;
-  }
-  if ('descriptor' in item) {
-    const desc = (item as FlexVaultResourceState).descriptor;
-    if (desc?.path) {
-      return desc.path;
-    }
-  }
-  if ('resourceUri' in item) {
-    const resUri = (item as vscode.SourceControlResourceState).resourceUri;
-    if (resUri && ctx.rootUri) {
-      const rel = path.relative(ctx.rootUri.fsPath, resUri.fsPath);
-      return rel.replace(/\\/g, '/');
-    }
-  }
-  if ('fsPath' in item && ctx.rootUri) {
-    const uri = item as vscode.Uri;
-    const rel = path.relative(ctx.rootUri.fsPath, uri.fsPath);
-    return rel.replace(/\\/g, '/');
-  }
-  return undefined;
 }

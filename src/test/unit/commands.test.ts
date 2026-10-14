@@ -238,4 +238,17 @@ describe('FxvCommands', () => {
       envelope: true,
     });
   });
+
+  it('builds the fetch command', async () => {
+    expect(await argvOf((fxv) => fxv.fetch())).toEqual({
+      argv: ['fetch'],
+      commandClass: 'locking-read',
+      envelope: true,
+    });
+    expect(await argvOf((fxv) => fxv.fetch({ repair: true }))).toEqual({
+      argv: ['fetch', '--repair'],
+      commandClass: 'locking-read',
+      envelope: true,
+    });
+  });
 });

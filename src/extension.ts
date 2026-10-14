@@ -17,6 +17,7 @@ import { HistoryTreeProvider, type HistoryFilter } from './providers/historyTree
 import { FlexVaultDecorationProvider } from './scm/decorations';
 import { FlexVaultScmProvider } from './scm/provider';
 import { ContextKeys } from './state/contextKeys';
+import { FetchCoordinator } from './state/fetchCoordinator';
 import { RecoveryManager } from './state/recovery';
 import { StatusCache } from './state/statusCache';
 import { Log } from './ui/log';
@@ -61,6 +62,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   let scmProvider: FlexVaultScmProvider | undefined;
   let statusCache: StatusCache | undefined;
+  let fetchCoordinator: FetchCoordinator | undefined;
   let decorationProvider: FlexVaultDecorationProvider | undefined;
   let rootSubscriptions: vscode.Disposable[] = [];
   // Tracks whether the status-error popup has already been shown for the
@@ -116,6 +118,8 @@ export function activate(context: vscode.ExtensionContext): void {
     rootSubscriptions = [];
     scmProvider = undefined;
     statusCache = undefined;
+    fetchCoordinator?.dispose();
+    fetchCoordinator = undefined;
     decorationProvider?.setIgnoreChecker(undefined);
     decorationProvider = undefined;
     statusBar.clearError();
@@ -253,6 +257,26 @@ export function activate(context: vscode.ExtensionContext): void {
           `Integration registration failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
         );
       });
+
+    // Background periodic fetch of remote metadata
+    fetchCoordinator = new FetchCoordinator(() => fxv.fetch(), {
+      getPeriodSeconds: () => numberSetting('fetchPeriodSeconds', 120),
+      isBlocked: () => versionGuard.blocked,
+      onFetchSuccess: (payload) => {
+        log?.info(`Background fetch completed: ${payload.bytes_downloaded} bytes downloaded.`);
+        if (payload.bytes_downloaded > 0) {
+          statusCache?.scheduleRefresh({ debounce: true, skipRemoteUpdate: true });
+          historyProvider.refresh();
+        }
+      },
+      onFetchError: (err) => {
+        log?.debug(
+          `Background fetch skipped or failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      },
+    });
+    rootSubscriptions.push({ dispose: () => fetchCoordinator?.dispose() });
+    fetchCoordinator.start();
   };
 
   setupRoot();
@@ -294,6 +318,9 @@ export function activate(context: vscode.ExtensionContext): void {
         const filter: HistoryFilter = raw === 'draft' || raw === 'published' ? raw : 'all';
         historyProvider.setFilter(filter);
         historyTreeView.description = historyFilterDescription(filter);
+      }
+      if (event.affectsConfiguration('flexvault.fetchPeriodSeconds')) {
+        fetchCoordinator?.restart();
       }
     }),
   );

@@ -71,7 +71,7 @@ The status bar displays the active branch, revisions behind remote, and current 
 ## Prerequisites
 
 - **VS Code**: Version `1.85.0` or newer.
-- **FlexVault CLI**: `fxv` (version `0.11.0` or newer, compatible up to `< 0.12.0`).
+- **FlexVault CLI**: `fxv` (version `0.11.0` or newer, compatible up to `< 0.13.0`).
   - The CLI must be accessible on your system `PATH` or configured via the `flexvault.cliPath` setting.
   - On Windows, install via the official installer; on macOS/Linux, install via standard package paths or Cargo.
 
@@ -103,6 +103,7 @@ This extension contributes the following settings under `flexvault.*`:
 | `flexvault.readTimeoutSeconds`  | `number`   | `60`     | Timeout for read-only CLI commands (`status`, `history`, `cat`). Set to `0` to disable.                                          |
 | `flexvault.writeTimeoutSeconds` | `number`   | `0`      | Timeout for mutating commands (`sync`, `goto`, `revert`). Defaults to `0` (disabled) to avoid terminating operations mid-flight. |
 | `flexvault.refreshDebounceMs`   | `number`   | `300`    | Coalescing debounce interval for automatic background status refreshes.                                                          |
+| `flexvault.fetchPeriodSeconds`  | `number`   | `120`    | Polling period in seconds for periodic fxv fetch to pull remote metadata. Set to `0` to disable.                                 |
 | `flexvault.watchEnabled`        | `boolean`  | `true`   | Enable or disable the file system watcher.                                                                                       |
 | `flexvault.watchExclude`        | `string[]` | `[]`     | Additional glob patterns excluded from the status watcher.                                                                       |
 | `flexvault.contentCacheSizeMB`  | `number`   | `512`    | Maximum size in megabytes for the on-disk `cat` diff content cache.                                                              |
