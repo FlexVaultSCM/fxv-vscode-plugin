@@ -98,3 +98,20 @@ jobs:
           else
             echo "OVSX_PAT not set, skipping Open VSX publish"
           fi
+
+  stage-discord-draft:
+    name: Stage Discord release announcement
+    needs: [release-please, publish-vsix]
+    if: needs['release-please'].outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage Discord Announcement
+        uses: FlexVaultSCM/discord-release-action@v1
+        with:
+          webhook-url: ${{ secrets.DISCORD_STAGING_WEBHOOK }}
+          from-gh-release: ${{ needs['release-please'].outputs.tag_name }}
+          product-name: "FlexVault VS Code Extension"
+          docs-url: "https://docs.fxv.dev/how-to/vscode-plugin"
