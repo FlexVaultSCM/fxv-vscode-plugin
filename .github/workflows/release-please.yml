@@ -113,5 +113,5 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_STAGING_WEBHOOK }}
           from-gh-release: ${{ needs['release-please'].outputs.tag_name }}
-          product-name: "FlexVault VS Code Extension"
-          docs-url: "https://docs.fxv.dev/how-to/vscode-plugin"
+          product-name: 'FlexVault VS Code Extension'
+          docs-url: 'https://docs.fxv.dev/how-to/vscode-plugin'
