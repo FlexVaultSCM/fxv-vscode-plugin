@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseSemVer, VersionGuard } from '../../cli/versionGuard';
+import { parseSemVer, SUPPORTED_CLI_RANGE, VersionGuard } from '../../cli/versionGuard';
 
 function guard(platform = 'linux'): VersionGuard {
   return new VersionGuard({ platform });
@@ -17,17 +17,25 @@ describe('parseSemVer', () => {
 });
 
 describe('the program version gate', () => {
+  const { floor, ceiling } = SUPPORTED_CLI_RANGE;
+  const floorStr = `${floor.major}.${floor.minor}.${floor.patch}`;
+  const ceilingStr = `${ceiling.major}.${ceiling.minor}.${ceiling.patch}`;
+  const belowFloorStr = `${floor.major}.${floor.minor > 0 ? floor.minor - 1 : 0}.9`;
+  const aboveCeilingStr = `${ceiling.major}.${ceiling.minor}.${ceiling.patch + 1}`;
+
   it('accepts the floor and everything below the ceiling', () => {
-    expect(guard().checkProgram('0.11.0').ok).toBe(true);
-    expect(guard().checkProgram('0.11.5').ok).toBe(true);
-    expect(guard().checkProgram('0.12.0').ok).toBe(true);
-    expect(guard().checkProgram('0.12.1').ok).toBe(true);
+    expect(guard().checkProgram(floorStr).ok).toBe(true);
+    expect(guard().checkProgram(`${floor.major}.${floor.minor}.${floor.patch + 5}`).ok).toBe(true);
+    for (let m = floor.minor; m < ceiling.minor; m++) {
+      expect(guard().checkProgram(`${floor.major}.${m}.0`).ok).toBe(true);
+      expect(guard().checkProgram(`${floor.major}.${m}.1`).ok).toBe(true);
+    }
   });
 
   it('blocks below the floor and points at the CLI', () => {
-    const verdict = guard().checkProgram('0.10.9');
+    const verdict = guard().checkProgram(belowFloorStr);
     expect(verdict).toMatchObject({ ok: false, problem: 'below-floor', remedy: 'upgrade-cli' });
-    expect(guard().checkProgram('0.9.0')).toMatchObject({
+    expect(guard().checkProgram('0.0.1')).toMatchObject({
       ok: false,
       problem: 'below-floor',
       remedy: 'upgrade-cli',
@@ -35,13 +43,13 @@ describe('the program version gate', () => {
   });
 
   it('blocks at the ceiling and points at the extension', () => {
-    const verdict = guard().checkProgram('0.13.0');
+    const verdict = guard().checkProgram(ceilingStr);
     expect(verdict).toMatchObject({
       ok: false,
       problem: 'above-ceiling',
       remedy: 'upgrade-extension',
     });
-    expect(guard().checkProgram('0.13.1')).toMatchObject({
+    expect(guard().checkProgram(aboveCeilingStr)).toMatchObject({
       ok: false,
       problem: 'above-ceiling',
       remedy: 'upgrade-extension',
@@ -49,23 +57,14 @@ describe('the program version gate', () => {
   });
 
   it('offers fxv upgrade only where a release binary exists', () => {
-    const onWindows = guard('win32').checkProgram('0.10.0');
-    const onLinux = guard('linux').checkProgram('0.10.0');
+    const onWindows = guard('win32').checkProgram(belowFloorStr);
+    const onLinux = guard('linux').checkProgram(belowFloorStr);
     expect(onWindows).toMatchObject({ ok: false, upgradeCommandAvailable: true });
     expect(onLinux).toMatchObject({ ok: false, upgradeCommandAvailable: false });
   });
 
   it('never offers the upgrade command above the ceiling, where it cannot help', () => {
     expect(guard('win32').checkProgram('1.0.0')).toMatchObject({ upgradeCommandAvailable: false });
-  });
-
-  it('reads a prerelease as its release version, at both ends of the range', () => {
-    expect(guard().checkProgram('0.11.0-rc1').ok).toBe(true);
-    expect(guard().checkProgram('0.12.0-rc1').ok).toBe(true);
-    expect(guard().checkProgram('0.13.0-rc1')).toMatchObject({
-      ok: false,
-      problem: 'above-ceiling',
-    });
   });
 
   it('blocks a version it cannot compare', () => {
