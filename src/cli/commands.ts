@@ -14,7 +14,7 @@ export interface IntegrationRegisterOptions {
   readonly pluginVersion: string;
   /** Minimum compatible fxv version, inclusive (e.g. "0.11.0"). */
   readonly minVersion: string;
-  /** Maximum compatible fxv version, exclusive (e.g. "0.13.0"). */
+  /** Maximum compatible fxv version, exclusive (e.g. "0.14.0"). */
   readonly maxVersion: string;
 }
 import type {
