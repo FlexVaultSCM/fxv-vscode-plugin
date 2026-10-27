@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.10.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.9.0...v0.10.0) (2026-10-27)
+
+
+### Features
+
+* bump supported max fxv version to 0.14.0 ([#36](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/36)) ([68703bb](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/68703bbb941eeb6ffc0002e348356b670a69fc1b))
+
 ## [0.9.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.8.0...v0.9.0) (2026-10-14)
 
 
