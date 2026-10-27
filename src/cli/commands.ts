@@ -10,11 +10,11 @@ import type { CliRunner, RawResult, RunOptions, RunResult } from './runner';
 export interface IntegrationRegisterOptions {
   /** Workspace path to associate the registration with. */
   readonly workspace: string;
-  /** Version of the plugin (e.g. "0.4.0"). */
+  /** Version of the plugin. */
   readonly pluginVersion: string;
-  /** Minimum compatible fxv version, inclusive (e.g. "0.11.0"). */
+  /** Minimum compatible fxv version, inclusive. */
   readonly minVersion: string;
-  /** Maximum compatible fxv version, exclusive (e.g. "0.14.0"). */
+  /** Maximum compatible fxv version, exclusive. */
   readonly maxVersion: string;
 }
 import type {

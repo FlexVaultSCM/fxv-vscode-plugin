@@ -36,20 +36,15 @@ export function parseSemVer(text: string): SemVer | undefined {
   };
 }
 
-/**
- * Compares the release triple and ignores any prerelease or build suffix, so
- * `0.11.0-rc1` is treated as `0.11.0` and accepted, while `0.14.0-rc1` is treated
- * as `0.14.0` and blocked. A prerelease of a supported version is close enough
- * to run; a prerelease of the next breaking one is not.
- */
+/** Compares the release triple and ignores any prerelease or build suffix. */
 function compare(left: SemVer, right: SemVer): number {
   return left.major - right.major || left.minor - right.minor || left.patch - right.patch;
 }
 
 /**
- * Only what has been tested. The ceiling is deliberate: 0.14.0 is the next
- * breaking CLI release and blocks the extension until someone re-pins and
- * tests, which belongs in the release checklist for every CLI minor.
+ * Only what has been tested. The ceiling is deliberate: the next breaking
+ * CLI release blocks the extension until someone re-pins and tests, which
+ * belongs in the release checklist for every CLI minor.
  */
 export const SUPPORTED_CLI_RANGE: VersionRange = {
   floor: { major: 0, minor: 11, patch: 0 },
