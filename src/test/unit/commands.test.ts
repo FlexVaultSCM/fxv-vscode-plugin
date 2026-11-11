@@ -171,6 +171,41 @@ describe('FxvCommands', () => {
       argv: [
         'integration',
         'register',
+        '--id',
+        'vscode',
+        '--name',
+        'vscode',
+        '--plugin-version',
+        '0.4.0',
+        '--min',
+        '0.11.0',
+        '--max-version',
+        '0.12.0',
+        '--workspace',
+        '/path/to/ws',
+      ],
+      commandClass: 'read',
+      envelope: false,
+    });
+  });
+
+  it('allows overriding the integration id when registering', async () => {
+    expect(
+      await argvOf((fxv) =>
+        fxv.integrationRegister({
+          id: 'custom-id',
+          workspace: '/path/to/ws',
+          pluginVersion: '0.4.0',
+          minVersion: '0.11.0',
+          maxVersion: '0.12.0',
+        }),
+      ),
+    ).toEqual({
+      argv: [
+        'integration',
+        'register',
+        '--id',
+        'custom-id',
         '--name',
         'vscode',
         '--plugin-version',
