@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [0.10.1](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.10.0...v0.10.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* use single integration id for vscode registration ([#38](https://github.com/FlexVaultSCM/fxv-vscode-plugin/issues/38)) ([c3b5f83](https://github.com/FlexVaultSCM/fxv-vscode-plugin/commit/c3b5f8344fdd57989873bcbd502121b6a76a35ed))
+
 ## [0.10.0](https://github.com/FlexVaultSCM/fxv-vscode-plugin/compare/v0.9.0...v0.10.0) (2026-10-27)
 
 
