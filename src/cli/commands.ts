@@ -10,6 +10,8 @@ import type { CliRunner, RawResult, RunOptions, RunResult } from './runner';
 export interface IntegrationRegisterOptions {
   /** Workspace path to associate the registration with. */
   readonly workspace: string;
+  /** Optional integration ID override. Defaults to 'vscode' for a single global registry entry. */
+  readonly id?: string;
   /** Version of the plugin. */
   readonly pluginVersion: string;
   /** Minimum compatible fxv version, inclusive. */
@@ -326,19 +328,23 @@ export class FxvCommands {
   }
 
   /**
-   * Registers this plugin instance with fxv's integration registry for the
-   * given workspace. Best-effort: callers should fire-and-forget and log
-   * failures rather than surfacing them to the user.
+   * Registers this plugin instance with fxv's integration registry. Uses a fixed
+   * integration ID ('vscode') by default so VS Code maintains a single machine-level
+   * entry rather than fragmenting per workspace. Best-effort: callers should
+   * fire-and-forget and log failures rather than surfacing them to the user.
    */
   integrationRegister(
     options: IntegrationRegisterOptions,
     run: RunOptions = {},
   ): Promise<RunResult<undefined>> {
+    const id = options.id ?? 'vscode';
     return this.runner.runJson<undefined>(
       {
         argv: [
           'integration',
           'register',
+          '--id',
+          id,
           '--name',
           'vscode',
           '--plugin-version',
