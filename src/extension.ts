@@ -3,11 +3,13 @@ import * as vscode from 'vscode';
 
 import { FxvCommands } from './cli/commands';
 import { CliDiscovery } from './cli/discovery';
+import { EXIT_CODES } from './cli/envelope';
 import { describeLockHolder, parseLockHolder } from './cli/lockErrors';
 import { CliRunner } from './cli/runner';
 import { SUPPORTED_CLI_RANGE, VersionGuard } from './cli/versionGuard';
 import { WorkspaceRoots } from './cli/workspace';
 import { registerCommands } from './commands';
+import { notifyClientUpgradeRequired } from './commands/errorHandler';
 import { historyFilterDescription } from './commands/history';
 import { LINKS, type LinkName } from './links';
 import { ContentCache } from './providers/contentCache';
@@ -171,11 +173,13 @@ export function activate(context: vscode.ExtensionContext): void {
             }
           });
       },
-      onStatusError: (msg) => {
+      onStatusError: (msg, exitCode) => {
         void contextKeys.setStatusError(true);
         statusBar.showError(msg);
         scmProvider?.setError(true);
-        if (!statusErrorNotified) {
+        if (exitCode === EXIT_CODES.clientUpgradeRequired) {
+          notifyClientUpgradeRequired(msg, log);
+        } else if (!statusErrorNotified) {
           statusErrorNotified = true;
           void vscode.window.showErrorMessage(`FlexVault: ${msg}`, 'Show Log').then((action) => {
             if (action === 'Show Log') {
