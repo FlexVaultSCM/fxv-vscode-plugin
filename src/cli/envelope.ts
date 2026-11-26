@@ -50,6 +50,9 @@ export type ExitClass = 'success' | 'general' | 'interrupted' | 'locked' | 'died
 export const EXIT_CODES = {
   success: 0,
   general: 1,
+  // A broker refused this fxv as too old. Classified as 'general'; callers
+  // check the code directly. Hand-added until the generated types include it.
+  clientUpgradeRequired: 94,
   interrupted: 98,
   locked: 99,
   died: 127,
